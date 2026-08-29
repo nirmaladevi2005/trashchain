@@ -1,3 +1,4 @@
+import { getAI, getGenerativeModel, GoogleAIBackend } from 'firebase/ai';
 import { app, isDemoMode } from '../lib/firebase';
 import type { PollutionAIAnalysis, Severity, WasteCategory } from '../types';
 
@@ -9,6 +10,19 @@ export interface AnalyzeImageOptions {
   locationName?: string;
 }
 
+let aiInstance: any = null;
+
+function getFirebaseAI() {
+  if (!aiInstance && app) {
+    try {
+      aiInstance = getAI(app, { backend: new GoogleAIBackend() });
+    } catch (err) {
+      console.warn('[AIAnalysisService] Firebase AI SDK initialization warning:', err);
+    }
+  }
+  return aiInstance;
+}
+
 class AIAnalysisService {
   private cache = new Map<string, PollutionAIAnalysis>();
   private activeRequests = new Map<string, Promise<PollutionAIAnalysis>>();
@@ -17,8 +31,8 @@ class AIAnalysisService {
    * Main client method for AI pollution image analysis via Firebase AI Logic / Gemini Developer API.
    * - Checks cache first to prevent duplicate API costs.
    * - Prevents concurrent duplicate calls for the same image.
-   * - Uses gemini-3.6-flash model via Firebase AI Logic / Gemini Developer API.
-   * - Fallbacks gracefully to structured DEMO mode if API is unreachable/unconfigured.
+   * - Uses gemini-3.6-flash model via Firebase AI Logic (firebase/ai SDK).
+   * - Passes actual inline base64 image data to Gemini.
    */
   public async analyzePollutionImage(options: AnalyzeImageOptions): Promise<PollutionAIAnalysis> {
     const cacheKey = options.imageUrl;
@@ -51,20 +65,52 @@ class AIAnalysisService {
   private async performAnalysis(options: AnalyzeImageOptions): Promise<PollutionAIAnalysis> {
     const timestamp = new Date().toISOString();
 
-    // Live AI Analysis via Firebase AI Logic / Gemini Developer API (gemini-3.6-flash)
+    // Live AI Analysis via Firebase AI Logic (firebase/ai SDK) with gemini-3.6-flash
     if (!isDemoMode() && app) {
       try {
-        console.info('[AIAnalysisService] Executing Gemini Developer API analysis using gemini-3.6-flash...');
-        
-        // Convert image to Base64 inline data if accessible
-        const inlineImage = await this.prepareInlineImage(options);
+        const ai = getFirebaseAI();
+        if (ai) {
+          const model = getGenerativeModel(ai, {
+            model: 'gemini-3.6-flash',
+            generationConfig: {
+              responseMimeType: 'application/json',
+              temperature: 0.2
+            }
+          });
 
-        // System instructions & prompt enforcing structured JSON and quantity safety
-        const prompt = `Analyze this pollution/waste image for environmental report classification.
+          // Convert image to inline Base64 data for Gemini
+          const inlineImagePart = await this.prepareInlineImage(options);
+
+          if (import.meta.env.DEV) {
+            console.info('[AI DEBUG]', {
+              mode: 'LIVE',
+              model: 'gemini-3.6-flash',
+              imageMime: inlineImagePart?.inlineData?.mimeType || 'none',
+              imageBytes: inlineImagePart ? Math.round((inlineImagePart.inlineData.data.length * 3) / 4) : 0,
+              base64Length: inlineImagePart?.inlineData?.data?.length || 0,
+              requestStarted: timestamp
+            });
+          }
+
+          const systemPrompt = `You are analyzing a real environmental pollution photograph for community waste recovery.
+
+Analyze ONLY what is visually supported by the image.
 Location hint: ${options.locationName || 'Urban field site'}
 User categories: ${(options.userCategories || []).join(', ') || 'Unclassified'}
 
-Return ONLY a valid JSON object matching this exact schema:
+Identify visible waste categories.
+Identify the most likely primary waste type.
+Assess visible severity.
+Describe environmental risks that are visually plausible from the scene.
+Describe visible hazards for cleanup volunteers.
+Recommend practical cleanup actions.
+Recommend realistic prevention/intervention strategies.
+Identify recurrence factors only when supported.
+
+QUANTITY SAFETY INSTRUCTION:
+Do NOT output specific measured weight in kilograms or pounds (such as "52 kg" or "100 lbs"). Describe waste quantity qualitatively only (e.g. "substantial visible pile", "scattered litter", "dense heap"). Actual field measurements remain separate.
+
+Return ONLY a JSON object with this exact schema:
 {
   "detectedWasteTypes": ["string"],
   "primaryWasteType": "string",
@@ -76,38 +122,36 @@ Return ONLY a valid JSON object matching this exact schema:
   "recurrenceFactors": ["string"],
   "safetyWarnings": ["string"],
   "summary": "string"
-}
+}`;
 
-QUANTITY SAFETY INSTRUCTION:
-Do NOT output specific measured weight in kilograms or pounds (such as "52 kg" or "100 lbs"). Describe waste quantity qualitatively only (e.g. "substantial visible pile", "scattered litter", "dense heap"). Actual field measurements remain separate.`;
-
-        // Direct fetch to Gemini Developer API endpoint via Firebase proxy/backend (Spark $0 tier compatible)
-        const requestPayload = {
-          contents: [
-            {
-              role: 'user',
-              parts: [
-                { text: prompt },
-                ...(inlineImage ? [{ inlineData: inlineImage }] : [])
-              ]
-            }
-          ],
-          generationConfig: {
-            responseMimeType: 'application/json',
-            temperature: 0.2
+          const parts: any[] = [systemPrompt];
+          if (inlineImagePart) {
+            parts.push(inlineImagePart);
           }
-        };
 
-        // Call Gemini 3.6 Flash via Developer API / Firebase AI Logic
-        const response = await this.callGeminiApi('gemini-3.6-flash', requestPayload);
-        if (response) {
-          const parsed = this.parseAndSanitizeAiResponse(response, timestamp);
-          if (parsed) {
-            return parsed;
+          const result = await model.generateContent(parts);
+          const responseText = result.response.text();
+
+          if (import.meta.env.DEV) {
+            console.info('[AI DEBUG]', {
+              requestCompleted: new Date().toISOString(),
+              responseLength: responseText ? responseText.length : 0,
+              schemaValid: !!responseText
+            });
+          }
+
+          if (responseText) {
+            const rawObj = JSON.parse(responseText);
+            const parsed = this.parseAndSanitizeAiResponse(rawObj, timestamp);
+            if (parsed) {
+              return parsed;
+            }
           }
         }
       } catch (err: any) {
-        console.warn('[AIAnalysisService] Live AI Logic execution error, falling back to structured DEMO mode:', err.message || err);
+        console.error('[AIAnalysisService] Live Gemini AI Analysis error:', err.message || err);
+        // In LIVE MODE, throw real error so UI displays "AI analysis unavailable" & "Continue without AI"
+        throw new Error(err.message || 'Gemini AI vision analysis unavailable for the uploaded image.');
       }
     }
 
@@ -116,28 +160,28 @@ Do NOT output specific measured weight in kilograms or pounds (such as "52 kg" o
   }
 
   /**
-   * Helper to convert image URL or Blob into inline Base64 data for Gemini
+   * Helper to convert image URL or Blob into inline Base64 part for Gemini SDK
    */
-  private async prepareInlineImage(options: AnalyzeImageOptions): Promise<{ mimeType: string; data: string } | null> {
+  private async prepareInlineImage(options: AnalyzeImageOptions): Promise<{ inlineData: { mimeType: string; data: string } } | null> {
     try {
       if (options.imageBlob) {
         const base64 = await this.blobToBase64(options.imageBlob);
         const mimeType = options.imageBlob.type || 'image/jpeg';
-        return { mimeType, data: base64 };
+        return { inlineData: { mimeType, data: base64 } };
       }
 
       if (options.imageUrl && options.imageUrl.startsWith('data:')) {
         const parts = options.imageUrl.split(',');
         const mimeMatch = options.imageUrl.match(/data:(.*?);base64/);
         const mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
-        return { mimeType, data: parts[1] };
+        return { inlineData: { mimeType, data: parts[1] } };
       }
 
       if (options.imageUrl && options.imageUrl.startsWith('blob:')) {
         const res = await fetch(options.imageUrl);
         const blob = await res.blob();
         const base64 = await this.blobToBase64(blob);
-        return { mimeType: blob.type || 'image/jpeg', data: base64 };
+        return { inlineData: { mimeType: blob.type || 'image/jpeg', data: base64 } };
       }
     } catch (err) {
       console.warn('[AIAnalysisService] Unable to convert image for inline data:', err);
@@ -156,32 +200,6 @@ Do NOT output specific measured weight in kilograms or pounds (such as "52 kg" o
       reader.onerror = reject;
       reader.readAsDataURL(blob);
     });
-  }
-
-  /**
-   * Calls the Gemini Developer API via standard Firebase Web App credentials
-   */
-  private async callGeminiApi(modelName: string, payload: any): Promise<any> {
-    const apiKey = import.meta.env.VITE_FIREBASE_API_KEY;
-    if (!apiKey) return null;
-
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-
-    if (!response.ok) {
-      throw new Error(`Gemini API returned status ${response.status}`);
-    }
-
-    const data = await response.json();
-    const textResult = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (textResult) {
-      return JSON.parse(textResult);
-    }
-    return null;
   }
 
   /**

@@ -85,10 +85,18 @@ export function SatelliteMap({ items = [], selectedHotspotId, onSelectHotspot }:
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
   const [showLegend, setShowLegend] = useState<boolean>(true);
 
-  // Compute default center from first hotspot or default coordinates
-  const defaultCenter: [number, number] = items.length > 0 && items[0].coordinates
-    ? [items[0].coordinates.lat, items[0].coordinates.lng]
-    : [40.7128, -74.0060];
+  // Map center priority: 1. Field Data hotspot 2. Mission hotspot 3. First hotspot 4. Regional fallback
+  const fieldHotspot = items.find(i => i.dataSource === 'FIELD DATA' && i.coordinates);
+  const missionHotspot = items.find(i => i.status === 'mission_active' && i.coordinates);
+  const firstHotspot = items.find(i => i.coordinates);
+
+  const defaultCenter: [number, number] = fieldHotspot?.coordinates
+    ? [fieldHotspot.coordinates.lat, fieldHotspot.coordinates.lng]
+    : missionHotspot?.coordinates
+    ? [missionHotspot.coordinates.lat, missionHotspot.coordinates.lng]
+    : firstHotspot?.coordinates
+    ? [firstHotspot.coordinates.lat, firstHotspot.coordinates.lng]
+    : [18.403127, 77.699866];
 
   const [mapCenter, setMapCenter] = useState<[number, number]>(defaultCenter);
   const [zoom, setZoom] = useState<number>(13);

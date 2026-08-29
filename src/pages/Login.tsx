@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { TreePine, Loader2 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { useAuth } from '../hooks/useAuth';
+import { CelebrationAmbience } from '../components/ui/impact/ImpactMoments';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -44,8 +45,9 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-neutral-50 px-4 py-12">
-      <div className="w-full max-w-md bg-white p-8 rounded-2xl shadow-sm border border-neutral-100">
+    <div className="min-h-screen flex items-center justify-center bg-neutral-50 dark:bg-neutral-950 px-4 py-12 relative overflow-hidden transition-colors">
+      <CelebrationAmbience intensity="subtle" />
+      <div className="w-full max-w-md bg-white dark:bg-neutral-900 p-8 rounded-3xl shadow-xl border border-neutral-100 dark:border-neutral-800 relative z-20">
         
         {/* Header Icon & Title */}
         <div className="flex flex-col items-center mb-6 text-center">

@@ -18,15 +18,6 @@ export interface CelebrationBurstProps {
   onClose?: () => void;
 }
 
-// Particle colors strictly adhering to climate-tech palette
-const PARTICLE_COLORS = [
-  '#059669', // Forest Green
-  '#10b981', // Fresh Green
-  '#f59e0b', // Amber Accent
-  '#a855f7', // Purple Transformation
-  '#ffffff', // White Highlight
-];
-
 export function CelebrationBurst({
   show,
   type = 'success',
@@ -38,38 +29,24 @@ export function CelebrationBurst({
   afterScore,
   onClose
 }: CelebrationBurstProps) {
-  const [particles, setParticles] = useState<Array<{ id: number; x: number; y: number; color: string; size: number; rotate: number }>>([]);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState<boolean>(false);
 
   useEffect(() => {
     if (typeof window !== 'undefined' && window.matchMedia) {
-      setPrefersReducedMotion(window.matchMedia('(prefers-color-scheme: reduce)').matches);
+      setPrefersReducedMotion(window.matchMedia('(prefers-reduced-motion: reduce)').matches);
     }
   }, []);
 
   useEffect(() => {
     if (!show) return;
 
-    // Generate burst particles based on level
-    const particleCount = level === 1 ? 12 : level === 2 ? 20 : 30;
-    const newParticles = Array.from({ length: particleCount }).map((_, i) => ({
-      id: i,
-      x: (Math.random() - 0.5) * (level === 3 ? 320 : 200),
-      y: -Math.random() * (level === 3 ? 240 : 160) - 20,
-      color: PARTICLE_COLORS[Math.floor(Math.random() * PARTICLE_COLORS.length)],
-      size: Math.floor(Math.random() * 6) + 4,
-      rotate: Math.floor(Math.random() * 360),
-    }));
-
-    setParticles(newParticles);
-
-    // Auto dismiss after 2.5s
+    // Auto dismiss after 3.2s
     const timer = setTimeout(() => {
       if (onClose) onClose();
-    }, 2800);
+    }, 3200);
 
     return () => clearTimeout(timer);
-  }, [show, level, onClose]);
+  }, [show, onClose]);
 
   if (!show) return null;
 
@@ -104,44 +81,22 @@ export function CelebrationBurst({
     <AnimatePresence>
       <div className="fixed inset-0 z-[3000] pointer-events-none flex items-center justify-center p-4">
         
-        {/* PARTY-POPPER CONFETTI BURST PARTICLES */}
+        {/* HIGH ENERGY PARTY-POPPER AMBIENCE ON MILESTONE BURST */}
         {!prefersReducedMotion && (
-          <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none">
-            {particles.map((p) => (
-              <motion.div
-                key={p.id}
-                initial={{ opacity: 1, x: 0, y: 0, scale: 0.5, rotate: 0 }}
-                animate={{
-                  opacity: [1, 1, 0],
-                  x: p.x,
-                  y: p.y,
-                  scale: [0.5, 1.2, 0.8],
-                  rotate: p.rotate,
-                }}
-                transition={{ duration: 1.8, ease: "easeOut" }}
-                style={{
-                  position: 'absolute',
-                  width: `${p.size}px`,
-                  height: `${p.size * (p.id % 2 === 0 ? 1 : 2.5)}px`,
-                  backgroundColor: p.color,
-                  borderRadius: p.id % 3 === 0 ? '50%' : '2px',
-                }}
-              />
-            ))}
-          </div>
+          <CelebrationAmbience intensity={level === 1 ? 'subtle' : level === 2 ? 'moderate' : 'high'} className="z-[3005]" />
         )}
 
         {/* CELEBRATION CARD DIALOG */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.9, y: 20 }}
+          initial={{ opacity: 0, scale: 0.85, y: 30 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.9, y: -20 }}
-          transition={{ type: "spring", stiffness: 300, damping: 25 }}
+          exit={{ opacity: 0, scale: 0.85, y: -20 }}
+          transition={{ type: "spring", stiffness: 350, damping: 22 }}
           className={cn(
-            "pointer-events-auto bg-neutral-950/95 border text-white rounded-3xl p-6 shadow-2xl backdrop-blur-md max-w-sm w-full font-sans text-center relative space-y-4",
-            type === 'transformation' ? "border-purple-500/50 shadow-purple-950/50" :
-            type === 'achievement' ? "border-amber-500/50 shadow-amber-950/50" :
-            "border-fresh-500/50 shadow-fresh-950/30"
+            "pointer-events-auto bg-neutral-950/95 border text-white rounded-3xl p-6 shadow-2xl backdrop-blur-md max-w-sm w-full font-sans text-center relative space-y-4 z-[3010]",
+            type === 'transformation' ? "border-purple-500/50 shadow-purple-950/60" :
+            type === 'achievement' ? "border-amber-500/50 shadow-amber-950/60" :
+            "border-fresh-500/50 shadow-fresh-950/40"
           )}
         >
           {onClose && (
@@ -154,21 +109,21 @@ export function CelebrationBurst({
             </button>
           )}
 
-          <div className={cn("w-14 h-14 rounded-2xl border flex items-center justify-center mx-auto shadow-lg", iconColor)}>
-            <IconComponent className="w-7 h-7" />
+          <div className={cn("w-16 h-16 rounded-2xl border flex items-center justify-center mx-auto shadow-xl transform hover:scale-105 transition-transform", iconColor)}>
+            <IconComponent className="w-8 h-8" />
           </div>
 
           <div className="space-y-1">
             <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-fresh-400">
-              ENVIRONMENTAL MILESTONE
+              ENVIRONMENTAL MILESTONE 🎉
             </span>
-            <h3 className="text-lg font-black text-white">{title || defaultTitle}</h3>
+            <h3 className="text-xl font-black text-white">{title || defaultTitle}</h3>
             <p className="text-xs text-neutral-300 font-sans">{message || defaultMessage}</p>
           </div>
 
           {/* SCORE REVEAL IF PROVIDED */}
           {impactScore && (
-            <div className="bg-neutral-900 border border-neutral-800 p-3.5 rounded-2xl flex items-center justify-around font-mono text-xs">
+            <div className="bg-neutral-900 border border-neutral-800 p-3.5 rounded-2xl flex items-center justify-around font-mono text-xs shadow-inner">
               {beforeScore !== undefined && afterScore !== undefined ? (
                 <div className="flex items-center gap-3">
                   <div>
@@ -183,7 +138,7 @@ export function CelebrationBurst({
                 </div>
               ) : (
                 <div>
-                  <span className="text-[9px] text-neutral-500 block">REWARD</span>
+                  <span className="text-[9px] text-neutral-500 block">IMPACT REWARD</span>
                   <span className="font-black text-fresh-400 text-base">+{impactScore} Points</span>
                 </div>
               )}
@@ -302,5 +257,155 @@ export function ScoreReveal({ value, suffix = '', prefix = '', className }: Scor
     <span className={cn("font-mono font-black tracking-tight", className)}>
       {prefix}{displayValue.toLocaleString()}{suffix}
     </span>
+  );
+}
+
+// 2. HIGH-ENERGY CONTINUOUS PARTY-POPPER AMBIENCE COMPONENT
+export interface CelebrationAmbienceProps {
+  intensity?: 'subtle' | 'moderate' | 'high';
+  className?: string;
+}
+
+// Climate-tech celebration palette: Emerald, Fresh Green, Gold, White, Violet, Turquoise
+const AMBIENT_PALETTE = ['#059669', '#10b981', '#fbbf24', '#ffffff', '#a855f7', '#06b6d4'];
+
+export function CelebrationAmbience({ intensity = 'moderate', className }: CelebrationAmbienceProps) {
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.matchMedia) {
+      setPrefersReducedMotion(window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    }
+  }, []);
+
+  if (prefersReducedMotion) return null;
+
+  const count = intensity === 'subtle' ? 40 : intensity === 'moderate' ? 80 : 120;
+
+  return (
+    <div 
+      aria-hidden="true" 
+      className={cn("fixed inset-0 pointer-events-none z-[15] overflow-hidden select-none", className)}
+    >
+      {/* VISUAL LEFT PARTY CANNON NOZZLE */}
+      <div className="fixed left-0 top-1/2 -translate-y-1/2 z-20 pointer-events-none">
+        <motion.div 
+          animate={{ scale: [1, 1.25, 1], rotate: [-15, -25, -15] }}
+          transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
+          className="w-12 h-16 bg-gradient-to-r from-emerald-600 via-fresh-500 to-amber-400 rounded-r-3xl shadow-2xl flex items-center justify-center opacity-90 border-r-2 border-white/50"
+        >
+          <div className="w-5 h-5 rounded-full bg-white animate-ping opacity-75" />
+        </motion.div>
+      </div>
+
+      {/* VISUAL RIGHT PARTY CANNON NOZZLE */}
+      <div className="fixed right-0 top-1/2 -translate-y-1/2 z-20 pointer-events-none">
+        <motion.div 
+          animate={{ scale: [1, 1.25, 1], rotate: [15, 25, 15] }}
+          transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut", delay: 0.6 }}
+          className="w-12 h-16 bg-gradient-to-l from-emerald-600 via-fresh-500 to-amber-400 rounded-l-3xl shadow-2xl flex items-center justify-center opacity-90 border-l-2 border-white/50"
+        >
+          <div className="w-5 h-5 rounded-full bg-white animate-ping opacity-75" />
+        </motion.div>
+      </div>
+
+      {/* LEFT CANNON LAUNCHED PARTICLES & RIBBONS */}
+      {Array.from({ length: Math.floor(count / 2) }).map((_, i) => {
+        const color = AMBIENT_PALETTE[i % AMBIENT_PALETTE.length];
+        const isRibbon = i % 3 === 0;
+        const isStar = i % 5 === 0;
+
+        const targetX = 25 + (i * 2.5); // 25vw to 75vw inward
+        const targetY = (Math.sin(i) * 200); // arc upward/downward
+        const duration = 2.5 + (i % 4) * 0.4;
+        const delay = (i % 6) * 0.4;
+
+        return (
+          <motion.div
+            key={`left-pop-${i}`}
+            initial={{
+              opacity: 0,
+              x: '0vw',
+              y: '50vh',
+              scale: 0.3,
+              rotate: 0,
+            }}
+            animate={{
+              opacity: [0, 1, 0.9, 0],
+              x: ['0vw', `${targetX * 0.4}vw`, `${targetX}vw`],
+              y: ['50vh', `calc(50vh + ${targetY - 100}px)`, `calc(50vh + ${targetY + 120}px)`],
+              scale: [0.3, 1.3, 0.9],
+              rotate: [0, 180, 540],
+            }}
+            transition={{
+              duration: duration,
+              repeat: Infinity,
+              repeatDelay: 1.2,
+              delay: delay,
+              ease: "easeOut",
+            }}
+            style={{
+              position: 'absolute',
+              width: isRibbon ? '4px' : isStar ? '10px' : '9px',
+              height: isRibbon ? '26px' : isStar ? '10px' : '10px',
+              backgroundColor: isStar ? 'transparent' : color,
+              borderRadius: isStar ? '0%' : isRibbon ? '2px' : i % 2 === 0 ? '50%' : '2px',
+              boxShadow: `0 0 12px ${color}`,
+            }}
+          >
+            {isStar && <span style={{ color, fontSize: '14px', fontWeight: 'bold' }}>★</span>}
+          </motion.div>
+        );
+      })}
+
+      {/* RIGHT CANNON LAUNCHED PARTICLES & RIBBONS */}
+      {Array.from({ length: Math.floor(count / 2) }).map((_, i) => {
+        const color = AMBIENT_PALETTE[(i + 3) % AMBIENT_PALETTE.length];
+        const isRibbon = i % 3 === 0;
+        const isStar = i % 4 === 0;
+
+        const targetX = 25 + (i * 2.5); // 25vw to 75vw inward from right
+        const targetY = (Math.cos(i) * 220); // arc upward/downward
+        const duration = 2.4 + (i % 4) * 0.45;
+        const delay = 0.3 + (i % 6) * 0.4;
+
+        return (
+          <motion.div
+            key={`right-pop-${i}`}
+            initial={{
+              opacity: 0,
+              x: '100vw',
+              y: '50vh',
+              scale: 0.3,
+              rotate: 0,
+            }}
+            animate={{
+              opacity: [0, 1, 0.9, 0],
+              x: ['100vw', `${100 - (targetX * 0.4)}vw`, `${100 - targetX}vw`],
+              y: ['50vh', `calc(50vh + ${targetY - 120}px)`, `calc(50vh + ${targetY + 140}px)`],
+              scale: [0.3, 1.3, 0.9],
+              rotate: [0, -180, -540],
+            }}
+            transition={{
+              duration: duration,
+              repeat: Infinity,
+              repeatDelay: 1.2,
+              delay: delay,
+              ease: "easeOut",
+            }}
+            style={{
+              position: 'absolute',
+              width: isRibbon ? '4px' : isStar ? '10px' : '9px',
+              height: isRibbon ? '26px' : isStar ? '10px' : '10px',
+              backgroundColor: isStar ? 'transparent' : color,
+              borderRadius: isStar ? '0%' : isRibbon ? '2px' : i % 2 === 0 ? '50%' : '2px',
+              boxShadow: `0 0 12px ${color}`,
+            }}
+          >
+            {isStar && <span style={{ color, fontSize: '14px', fontWeight: 'bold' }}>✦</span>}
+          </motion.div>
+        );
+      })}
+    </div>
   );
 }
