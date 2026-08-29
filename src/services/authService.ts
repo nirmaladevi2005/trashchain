@@ -96,26 +96,51 @@ const DEMO_USER: UserProfile = {
   publicProfile: false,
 };
 
+const SESSION_STORAGE_DEMO_KEY = 'trashchain_demo_session';
+
 class AuthService {
-  private currentUser: UserProfile | null = isDemoMode() ? DEMO_USER : null;
+  private isDemoSessionActive: boolean = false;
+  private currentUser: UserProfile | null = null;
   private listeners: ((user: UserProfile | null) => void)[] = [];
 
   constructor() {
+    // Restore session-scoped Demo Mode from sessionStorage
+    if (typeof window !== 'undefined' && window.sessionStorage) {
+      this.isDemoSessionActive = sessionStorage.getItem(SESSION_STORAGE_DEMO_KEY) === 'true';
+    }
+
+    if (isDemoMode() || this.isDemoSessionActive) {
+      this.currentUser = DEMO_USER;
+    }
+
     if (!isDemoMode() && auth) {
       onAuthStateChanged(auth, async (fbUser: FirebaseUser | null) => {
         if (fbUser) {
+          // A real Firebase user has authenticated -> Live Mode takes over
+          this.isDemoSessionActive = false;
+          if (typeof window !== 'undefined' && window.sessionStorage) {
+            sessionStorage.removeItem(SESSION_STORAGE_DEMO_KEY);
+          }
           const profile = await this.fetchUserProfile(fbUser.uid, fbUser.email || '', fbUser.photoURL);
           this.currentUser = profile;
+          this.notifyListeners();
         } else {
-          this.currentUser = null;
+          // Firebase Auth is unauthenticated. Do NOT destroy an active Demo Session!
+          if (!this.isDemoSessionActive) {
+            this.currentUser = null;
+            this.notifyListeners();
+          }
         }
-        this.notifyListeners();
       });
     }
   }
 
   private notifyListeners() {
     this.listeners.forEach(cb => cb(this.currentUser));
+  }
+
+  public isDemoSession(): boolean {
+    return isDemoMode() || this.isDemoSessionActive || this.currentUser?.dataSource === 'DEMO DATA';
   }
 
   public subscribe(callback: (user: UserProfile | null) => void): () => void {
@@ -127,7 +152,7 @@ class AuthService {
   }
 
   public getCurrentUser(): UserProfile | null {
-    if (isDemoMode()) return DEMO_USER;
+    if (isDemoMode() || this.isDemoSessionActive) return DEMO_USER;
     return this.currentUser;
   }
 
@@ -204,6 +229,10 @@ class AuthService {
 
   public async loginDemoUser(): Promise<UserProfile> {
     console.info('[AuthService] Activating Demo Mode user session');
+    this.isDemoSessionActive = true;
+    if (typeof window !== 'undefined' && window.sessionStorage) {
+      sessionStorage.setItem(SESSION_STORAGE_DEMO_KEY, 'true');
+    }
     this.currentUser = DEMO_USER;
     this.notifyListeners();
     return DEMO_USER;
@@ -482,13 +511,21 @@ class AuthService {
   }
 
   public async logout(): Promise<void> {
-    if (isDemoMode() || !auth) {
-      console.info('[AuthService] Demo Mode logout');
-      return;
+    console.info('[AuthService] Logging out user session');
+    this.isDemoSessionActive = false;
+    if (typeof window !== 'undefined' && window.sessionStorage) {
+      sessionStorage.removeItem(SESSION_STORAGE_DEMO_KEY);
     }
-    await firebaseSignOut(auth);
     this.currentUser = null;
     this.notifyListeners();
+
+    if (!isDemoMode() && auth) {
+      try {
+        await firebaseSignOut(auth);
+      } catch (err) {
+        console.warn('[AuthService] Firebase signOut error:', err);
+      }
+    }
   }
 }
 

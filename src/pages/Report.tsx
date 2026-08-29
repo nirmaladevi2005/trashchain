@@ -46,7 +46,7 @@ const pageVariants = {
 
 export default function Report() {
   const navigate = useNavigate();
-  const { user, isDemo, loading: authLoading } = useAuth();
+  const { user, isDemo, isDemoSession: isDemoSessionActive, loading: authLoading } = useAuth();
   const [searchParams] = useSearchParams();
   const queryLat = searchParams.get('lat');
   const queryLng = searchParams.get('lng');
@@ -303,8 +303,8 @@ export default function Report() {
     // Live Firebase Auth Source of Truth
     const liveFirebaseUid = auth?.currentUser?.uid;
 
-    // Determine if current session is Demo Mode (unconfigured env OR user entered via Explore Demo)
-    const isDemoSession = isDemoMode() || isDemo || user?.dataSource === 'DEMO DATA' || user?.uid === 'demo-user-1';
+    // Determine if current session is Demo Mode (unconfigured env OR active demo session OR demo user)
+    const isDemoSession = isDemoMode() || isDemo || isDemoSessionActive || user?.dataSource === 'DEMO DATA' || user?.uid === 'demo-user-1';
 
     // Auth state initialization race protection (only applies in Live Mode)
     if (!isDemoSession && authLoading) {
