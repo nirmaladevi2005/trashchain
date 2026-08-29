@@ -300,28 +300,34 @@ export default function Report() {
     if (isSubmitting) return; // Prevent duplicate submissions
     setSubmitError(null);
 
-    // Auth state initialization race protection
-    if (authLoading) {
+    // Live Firebase Auth Source of Truth
+    const liveFirebaseUid = auth?.currentUser?.uid;
+
+    // Determine if current session is Demo Mode (unconfigured env OR user entered via Explore Demo)
+    const isDemoSession = isDemoMode() || isDemo || user?.dataSource === 'DEMO DATA' || user?.uid === 'demo-user-1';
+
+    // Auth state initialization race protection (only applies in Live Mode)
+    if (!isDemoSession && authLoading) {
       setSubmitError('Checking your sign-in status... Please try again in a moment.');
       return;
     }
 
-    // Live Firebase Auth Source of Truth
-    const liveFirebaseUid = auth?.currentUser?.uid;
-
-    // Live Firebase Mode authentication requirement check (NEVER allow unauthenticated/demo writes in Live Mode)
-    if (!isDemoMode() && !liveFirebaseUid) {
+    // Live Firebase Mode authentication requirement check (NEVER allow unauthenticated writes in Live Mode)
+    if (!isDemoSession && !liveFirebaseUid) {
       setSubmitError('Please sign in before submitting a pollution report.');
       return;
     }
 
-    const liveReporterId = !isDemoMode() ? liveFirebaseUid! : (user?.uid || 'demo-user-1');
+    const liveReporterId = !isDemoSession ? liveFirebaseUid! : (user?.uid || 'demo-user-1');
 
     if (import.meta.env.DEV) {
-      console.info('[REPORT AUTH DEBUG]', {
+      console.info('[REPORT SUBMIT DIAGNOSTIC]', {
+        isDemoMode: isDemoMode(),
+        isDemoSession,
+        userUid: user?.uid,
+        userDataSource: user?.dataSource,
         authCurrentUserUid: liveFirebaseUid,
-        userProfileUid: user?.uid,
-        reporterId: liveReporterId
+        authLoading
       });
     }
 
@@ -350,7 +356,7 @@ export default function Report() {
         isRecurring: report.recurring || false,
         reportedBy: user?.displayName || 'Citizen Volunteer',
         aiAnalysis: report.aiAnalysis
-      });
+      }, isDemoSession);
 
       setCreatedHotspotId(newHotspotId);
       setShowCelebration(true);

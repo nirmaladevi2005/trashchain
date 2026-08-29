@@ -153,9 +153,9 @@ class HotspotService {
     return null;
   }
 
-  public async createHotspot(data: Omit<FirestoreHotspot, 'id' | 'dataSource'>): Promise<string> {
+  public async createHotspot(data: Omit<FirestoreHotspot, 'id' | 'dataSource'>, isDemoSession: boolean = false): Promise<string> {
     const newId = `field-hotspot-${Date.now()}`;
-    if (isDemoMode() || !db) {
+    if (isDemoMode() || isDemoSession || !db) {
       console.info('[HotspotService] Demo Mode: created local hotspot report ID:', newId);
       return newId;
     }
