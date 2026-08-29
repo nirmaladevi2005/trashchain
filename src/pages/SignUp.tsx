@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
-  TreePine, AlertTriangle, Loader2, ShieldCheck, MapPin, 
+  AlertTriangle, Loader2, ShieldCheck, MapPin, 
   Building2, Users, FileText, Globe, Share2, Lock, Eye, CheckCircle2 
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { ImpactCelebration } from '../components/ui/impact/ImpactMoments';
+import { BrandLogo } from '../components/ui/BrandLogo';
 import { useAuth } from '../hooks/useAuth';
 import { isDemoMode } from '../lib/firebase';
 import type { UserRole, SignUpIdentityData } from '../services/authService';
@@ -149,9 +150,7 @@ export default function SignUp() {
           )}
 
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-forest-100 dark:bg-forest-950 text-forest-700 dark:text-fresh-400 rounded-2xl flex items-center justify-center font-bold">
-              <TreePine className="w-6 h-6" />
-            </div>
+            <BrandLogo variant="mark" size="lg" />
             <div>
               <h2 className="text-2xl font-black tracking-tight text-neutral-900 dark:text-white">Join TrashChain</h2>
               <p className="text-xs text-neutral-500 dark:text-neutral-400 font-mono">Create your community environmental identity</p>

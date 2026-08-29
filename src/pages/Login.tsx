@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { TreePine, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
+import { BrandLogo } from '../components/ui/BrandLogo';
 import { useAuth } from '../hooks/useAuth';
 import { CelebrationAmbience } from '../components/ui/impact/ImpactMoments';
 
@@ -51,10 +52,8 @@ export default function Login() {
         
         {/* Header Icon & Title */}
         <div className="flex flex-col items-center mb-6 text-center">
-          <div className="w-12 h-12 bg-forest-100 text-forest-600 rounded-xl flex items-center justify-center mb-3 shadow-inner">
-            <TreePine className="w-6 h-6" />
-          </div>
-          <h2 className="text-2xl font-black text-neutral-900 tracking-tight">TrashChain Recovery Network</h2>
+          <BrandLogo variant="full" size="lg" className="mb-3" />
+          <h2 className="text-xl font-black text-neutral-900 dark:text-white tracking-tight">Recovery Network</h2>
           <p className="text-xs text-neutral-500 mt-1 max-w-xs leading-relaxed">
             Community-driven pollution recovery, AI vision analysis, and field missions.
           </p>

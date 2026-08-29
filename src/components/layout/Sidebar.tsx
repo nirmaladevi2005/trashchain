@@ -6,6 +6,7 @@ import {
 import { cn } from '../../utils/cn';
 import { useAuth } from '../../hooks/useAuth';
 import { useSidebar } from '../../context/SidebarContext';
+import { BrandLogo } from '../ui/BrandLogo';
 import { ThemeToggle } from '../ui/ThemeToggle';
 
 const navItems = [
@@ -33,18 +34,10 @@ export function Sidebar() {
     >
       {/* HEADER */}
       <div className={cn("p-4 flex items-center border-b border-neutral-100 dark:border-neutral-900 transition-all duration-300", isCollapsed ? "justify-center" : "justify-between")}>
-        <div className="flex items-center gap-2 text-forest-700 dark:text-fresh-400 overflow-hidden">
-          <Leaf className="w-7 h-7 shrink-0" />
-          <span 
-            className={cn(
-              "text-xl font-bold tracking-tight text-neutral-900 dark:text-white truncate transition-all duration-300",
-              isCollapsed ? "opacity-0 w-0 hidden" : "opacity-100 w-auto"
-            )}
-          >
-            TrashChain
-          </span>
-        </div>
-
+        <BrandLogo 
+          variant={isCollapsed ? "mark" : "full"} 
+          size="md"
+        />
         {!isCollapsed && <ThemeToggle />}
       </div>
       

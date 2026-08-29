@@ -10,6 +10,7 @@ import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { ImpactBadge } from '../components/ui/ImpactBadge';
 import { ScoreReveal, CelebrationAmbience } from '../components/ui/impact/ImpactMoments';
+import { BrandLogo } from '../components/ui/BrandLogo';
 import { isDemoMode } from '../lib/firebase';
 import { cn } from '../utils/cn';
 
@@ -68,9 +69,8 @@ export default function Landing() {
       {/* 1. NAVIGATION BAR */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-neutral-950/80 backdrop-blur-md border-b border-neutral-850">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2 text-fresh-400 font-bold text-xl tracking-tight">
-            <TreePine className="w-7 h-7 text-fresh-400" />
-            <span className="text-white font-black">TrashChain</span>
+          <Link to="/" className="flex items-center">
+            <BrandLogo variant="full" size="md" />
           </Link>
 
           <div className="hidden md:flex items-center gap-6 text-xs font-semibold text-neutral-300">
