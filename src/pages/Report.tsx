@@ -899,7 +899,7 @@ export default function Report() {
                   )}
 
                   {recoveryPlan && (
-                    <RecoveryPlanCard plan={recoveryPlan} onStartMission={() => navigate('/missions')} />
+                    <RecoveryPlanCard plan={recoveryPlan} onStartMission={() => navigate(createdHotspotId ? `/missions?startMissionFor=${createdHotspotId}` : '/missions')} />
                   )}
                 </div>
               )}
@@ -992,10 +992,13 @@ export default function Report() {
               </div>
 
               <div className="space-y-3 pt-2">
-                <Button onClick={() => navigate('/missions')} className="w-full bg-forest-600 hover:bg-forest-700 text-white font-bold text-xs py-3.5">
-                  Create Cleanup Mission <ArrowRight className="w-4 h-4 ml-1.5" />
+                <Button
+                  onClick={() => navigate(createdHotspotId ? `/missions?startMissionFor=${createdHotspotId}` : '/missions')}
+                  className="w-full bg-forest-600 hover:bg-forest-700 text-white font-bold text-xs py-3.5 font-mono shadow-lg"
+                >
+                  Start Recovery Mission <ArrowRight className="w-4 h-4 ml-1.5" />
                 </Button>
-                <Button variant="outline" onClick={() => navigate('/explore')} className="w-full border-neutral-700 text-white text-xs font-bold py-3.5">
+                <Button variant="outline" onClick={() => navigate('/explore')} className="w-full border-neutral-700 text-white text-xs font-bold py-3.5 font-mono">
                   View on Recovery Map
                 </Button>
               </div>

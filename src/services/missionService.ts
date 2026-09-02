@@ -6,6 +6,8 @@ import {
 import type { Mission, MissionStatus, DataSourceType } from '../types';
 import { missions as mockMissions } from '../data/mockData';
 
+import { hotspotService } from './hotspotService';
+
 export interface FirestoreMission extends Omit<Mission, 'id'> {
   id: string;
   dataSource: DataSourceType;
@@ -15,13 +17,19 @@ export interface FirestoreMission extends Omit<Mission, 'id'> {
 
 class MissionService {
   private collectionName = 'missions';
+  private demoMissions: FirestoreMission[] = mockMissions.map(m => ({
+    ...m,
+    dataSource: 'DEMO DATA' as DataSourceType,
+  }));
+  private subscribers: Set<(missions: FirestoreMission[]) => void> = new Set();
+
+  private notifySubscribers() {
+    this.subscribers.forEach(cb => cb([...this.demoMissions]));
+  }
 
   public async getMissions(): Promise<FirestoreMission[]> {
     if (isDemoMode() || !db) {
-      return mockMissions.map(m => ({
-        ...m,
-        dataSource: 'DEMO DATA' as DataSourceType,
-      }));
+      return [...this.demoMissions];
     }
 
     try {
@@ -45,7 +53,7 @@ class MissionService {
       });
     } catch (err) {
       console.error('[MissionService] Error fetching live missions, falling back to Demo Data:', err);
-      return mockMissions.map(m => ({ ...m, dataSource: 'DEMO DATA' as DataSourceType }));
+      return [...this.demoMissions];
     }
   }
 
@@ -54,8 +62,11 @@ class MissionService {
     onError?: (err: Error) => void
   ): () => void {
     if (isDemoMode() || !db) {
-      onData(mockMissions.map(m => ({ ...m, dataSource: 'DEMO DATA' as DataSourceType })));
-      return () => {};
+      onData([...this.demoMissions]);
+      this.subscribers.add(onData);
+      return () => {
+        this.subscribers.delete(onData);
+      };
     }
 
     const q = query(collection(db, this.collectionName), orderBy('date', 'asc'));
@@ -80,14 +91,14 @@ class MissionService {
     }, (err) => {
       console.error('[MissionService] Real-time subscription error:', err);
       if (onError) onError(err);
-      onData(mockMissions.map(m => ({ ...m, dataSource: 'DEMO DATA' as DataSourceType })));
+      onData([...this.demoMissions]);
     });
   }
 
   public async getMissionById(id: string): Promise<FirestoreMission | null> {
     if (isDemoMode() || !db) {
-      const found = mockMissions.find(m => m.id === id);
-      return found ? { ...found, dataSource: 'DEMO DATA' as DataSourceType } : null;
+      const found = this.demoMissions.find(m => m.id === id);
+      return found ? { ...found } : null;
     }
 
     try {
@@ -115,10 +126,35 @@ class MissionService {
     return null;
   }
 
-  public async createMissionFromHotspot(hotspotId: string, title: string, desc: string, date: string, organizerId: string): Promise<string> {
+  public async createMissionFromHotspot(
+    hotspotId: string,
+    title: string,
+    desc: string,
+    date: string,
+    organizerId: string,
+    isDemoSession: boolean = false
+  ): Promise<string> {
     const newId = `field-mission-${Date.now()}`;
-    if (isDemoMode() || !db) {
+
+    if (isDemoMode() || isDemoSession || !db) {
       console.info('[MissionService] Demo Mode: created local mission ID:', newId);
+      const newMission: FirestoreMission = {
+        id: newId,
+        hotspotId,
+        title: title || 'Community Cleanup Mission',
+        description: desc || 'Community recovery mission for reported pollution site.',
+        volunteersNeeded: 15,
+        volunteersRegistered: [organizerId || 'demo-user-1'],
+        points: 150,
+        status: 'upcoming',
+        date: date || new Date(Date.now() + 86400000 * 3).toISOString(),
+        organizerId: organizerId || 'demo-user-1',
+        dataSource: 'DEMO DATA',
+      };
+
+      this.demoMissions.unshift(newMission);
+      this.notifySubscribers();
+      await hotspotService.updateHotspotStatus(hotspotId, 'mission_active');
       return newId;
     }
 
@@ -128,7 +164,7 @@ class MissionService {
       description: desc,
       volunteersNeeded: 15,
       volunteersRegistered: [organizerId],
-      points: 200,
+      points: 150,
       status: 'upcoming',
       date,
       organizerId,
@@ -136,6 +172,8 @@ class MissionService {
       updatedAt: serverTimestamp(),
       dataSource: 'FIELD DATA',
     });
+
+    await hotspotService.updateHotspotStatus(hotspotId, 'mission_active');
     return newId;
   }
 

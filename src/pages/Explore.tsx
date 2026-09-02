@@ -1,14 +1,15 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { SatelliteMap } from '../components/shared/SatelliteMap';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { 
-  MapPin, Search, ChevronRight, Compass, X, ArrowRight
+  MapPin, Search, ChevronRight, Compass, X, ArrowRight, Target, Users, Calendar, Sparkles
 } from 'lucide-react';
 import { hotspotService, type FirestoreHotspot } from '../services/hotspotService';
+import { missionService, type FirestoreMission } from '../services/missionService';
 import { isDemoMode } from '../lib/firebase';
 import { cn } from '../utils/cn';
 
@@ -16,18 +17,58 @@ type FilterType = 'all' | 'critical' | 'reported' | 'mission' | 'recovered' | 't
 
 export default function Explore() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+
   const [hotspotsList, setHotspotsList] = useState<FirestoreHotspot[]>([]);
+  const [missionsList, setMissionsList] = useState<FirestoreMission[]>([]);
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [selectedHotspot, setSelectedHotspot] = useState<FirestoreHotspot | null>(null);
+  const [selectedHotspot, setSelectedHotspotState] = useState<FirestoreHotspot | null>(null);
   const isDemo = isDemoMode();
 
+  // Synchronize selectedHotspot state with URL query parameter for clean deep-linking
+  const setSelectedHotspot = (hotspot: FirestoreHotspot | null) => {
+    setSelectedHotspotState(hotspot);
+    if (hotspot) {
+      searchParams.set('hotspotId', hotspot.id);
+      setSearchParams(searchParams, { replace: true });
+    } else if (searchParams.has('hotspotId')) {
+      searchParams.delete('hotspotId');
+      setSearchParams(searchParams, { replace: true });
+    }
+  };
+
   useEffect(() => {
-    const unsubscribe = hotspotService.subscribeToHotspots((data) => {
+    const unsubscribeHotspots = hotspotService.subscribeToHotspots((data) => {
       setHotspotsList(data);
     });
-    return () => unsubscribe();
+
+    const unsubscribeMissions = missionService.subscribeToMissions((mData) => {
+      setMissionsList(mData);
+    });
+
+    return () => {
+      unsubscribeHotspots();
+      unsubscribeMissions();
+    };
   }, []);
+
+  // Auto-select hotspot from URL query param if present
+  useEffect(() => {
+    const targetId = searchParams.get('hotspotId');
+    if (targetId && hotspotsList.length > 0) {
+      const found = hotspotsList.find(h => h.id === targetId);
+      if (found && selectedHotspot?.id !== found.id) {
+        setSelectedHotspotState(found);
+      }
+    }
+  }, [searchParams, hotspotsList]);
+
+  // Find mission linked to selected hotspot if any
+  const linkedMission = useMemo(() => {
+    if (!selectedHotspot) return null;
+    return missionsList.find(m => m.hotspotId === selectedHotspot.id);
+  }, [selectedHotspot, missionsList]);
 
   // Filtered hotspots list based on search and category filter
   const filteredHotspots = useMemo(() => {
@@ -240,26 +281,58 @@ export default function Explore() {
                   <div className="flex items-center gap-1 text-neutral-400">
                     <span className="text-coral-400 font-bold">REPORTED</span>
                     <ChevronRight className="w-3 h-3 text-neutral-600" />
-                    <span className={selectedHotspot.status !== 'reported' ? 'text-yellow-400 font-bold' : 'text-neutral-600'}>MISSION</span>
+                    <span className={selectedHotspot.status !== 'reported' || linkedMission ? 'text-yellow-400 font-bold' : 'text-neutral-600'}>MISSION</span>
                     <ChevronRight className="w-3 h-3 text-neutral-600" />
                     <span className={selectedHotspot.status === 'cleaned' || selectedHotspot.status === 'transformed' ? 'text-fresh-400 font-bold' : 'text-neutral-600'}>CLEANED</span>
                   </div>
                 </div>
 
-                <div className="space-y-2 pt-2">
-                  <Button 
-                    onClick={() => navigate('/report')}
-                    className="w-full bg-forest-600 hover:bg-forest-700 text-white font-bold text-xs py-2.5"
-                  >
-                    View Hotspot Details <ArrowRight className="w-3.5 h-3.5 ml-1" />
-                  </Button>
-                  {selectedHotspot.status === 'cleaned' && (
-                    <Button 
-                      variant="outline"
-                      onClick={() => navigate('/timeline')}
-                      className="w-full border-neutral-700 bg-neutral-850 text-white text-xs font-bold py-2.5"
+                {/* Linked Mission or Recovery Candidate Details */}
+                {linkedMission ? (
+                  <div className="p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-xl space-y-1.5 font-mono text-xs">
+                    <div className="flex items-center justify-between text-yellow-400 font-bold text-[10px] uppercase">
+                      <span className="flex items-center gap-1"><Target className="w-3.5 h-3.5 text-yellow-400" /> Active Mission</span>
+                      <Badge variant="warning" className="text-[9px] uppercase">{linkedMission.status}</Badge>
+                    </div>
+                    <p className="font-bold text-white text-xs">{linkedMission.title}</p>
+                    <div className="flex items-center justify-between text-[11px] text-neutral-300">
+                      <span className="flex items-center gap-1"><Users className="w-3 h-3 text-neutral-400" /> {linkedMission.volunteersRegistered.length} / {linkedMission.volunteersNeeded} volunteers</span>
+                      <span className="flex items-center gap-1"><Calendar className="w-3 h-3 text-neutral-400" /> {new Date(linkedMission.date).toLocaleDateString()}</span>
+                    </div>
+                  </div>
+                ) : selectedHotspot.aiAnalysis ? (
+                  <div className="p-3 bg-purple-950/40 border border-purple-500/30 rounded-xl space-y-1 font-mono text-xs">
+                    <span className="text-[10px] text-purple-400 font-bold uppercase flex items-center gap-1">
+                      <Sparkles className="w-3 h-3 text-purple-400" /> AI Scene Evaluation
+                    </span>
+                    <p className="text-[11px] text-neutral-300 font-sans line-clamp-2">
+                      {(selectedHotspot.aiAnalysis as any)?.summary || selectedHotspot.aiAnalysis.risk || selectedHotspot.aiAnalysis.immediateAction}
+                    </p>
+                  </div>
+                ) : null}
+
+                {/* Hotspot Actions */}
+                <div className="space-y-2 pt-2 font-mono text-xs">
+                  {linkedMission ? (
+                    <Button
+                      onClick={() => navigate(`/missions/${linkedMission.id}`)}
+                      className="w-full bg-forest-600 hover:bg-forest-700 text-white font-bold py-2.5 flex items-center justify-center gap-1.5"
                     >
-                      View Recovery Story
+                      View Mission Details <ArrowRight className="w-3.5 h-3.5" />
+                    </Button>
+                  ) : selectedHotspot.status === 'cleaned' || selectedHotspot.status === 'transformed' ? (
+                    <Button
+                      onClick={() => navigate('/timeline')}
+                      className="w-full bg-forest-600 hover:bg-forest-700 text-white font-bold py-2.5 flex items-center justify-center gap-1.5"
+                    >
+                      View Recovery Story <ArrowRight className="w-3.5 h-3.5" />
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={() => navigate(`/missions?startMissionFor=${selectedHotspot.id}`)}
+                      className="w-full bg-forest-600 hover:bg-forest-700 text-white font-bold py-2.5 flex items-center justify-center gap-1.5 shadow-md"
+                    >
+                      Start Recovery Mission <ArrowRight className="w-3.5 h-3.5" />
                     </Button>
                   )}
                 </div>

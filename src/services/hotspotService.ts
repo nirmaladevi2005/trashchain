@@ -22,17 +22,23 @@ export interface FirestoreHotspot extends Omit<Hotspot, 'id'> {
 
 class HotspotService {
   private collectionName = 'hotspots';
+  private demoHotspots: FirestoreHotspot[] = mockHotspots.map(h => ({
+    ...h,
+    beforePhotoUrl: h.images[0],
+    wasteTypes: [h.category],
+    isRecurring: true,
+    reportedBy: h.reporterId,
+    dataSource: 'DEMO DATA' as DataSourceType,
+  }));
+  private subscribers: Set<(hotspots: FirestoreHotspot[]) => void> = new Set();
+
+  private notifySubscribers() {
+    this.subscribers.forEach(cb => cb([...this.demoHotspots]));
+  }
 
   public async getHotspots(): Promise<FirestoreHotspot[]> {
     if (isDemoMode() || !db) {
-      return mockHotspots.map(h => ({
-        ...h,
-        beforePhotoUrl: h.images[0],
-        wasteTypes: [h.category],
-        isRecurring: true,
-        reportedBy: h.reporterId,
-        dataSource: 'DEMO DATA',
-      }));
+      return [...this.demoHotspots];
     }
 
     try {
@@ -65,7 +71,7 @@ class HotspotService {
       });
     } catch (err) {
       console.error('[HotspotService] Error fetching live hotspots, falling back to Demo Data:', err);
-      return mockHotspots.map(h => ({ ...h, dataSource: 'DEMO DATA' }));
+      return [...this.demoHotspots];
     }
   }
 
@@ -74,8 +80,11 @@ class HotspotService {
     onError?: (err: Error) => void
   ): () => void {
     if (isDemoMode() || !db) {
-      onData(mockHotspots.map(h => ({ ...h, dataSource: 'DEMO DATA' })));
-      return () => {};
+      onData([...this.demoHotspots]);
+      this.subscribers.add(onData);
+      return () => {
+        this.subscribers.delete(onData);
+      };
     }
 
     const q = query(collection(db, this.collectionName), orderBy('reportedAt', 'desc'));
@@ -109,14 +118,14 @@ class HotspotService {
     }, (err) => {
       console.error('[HotspotService] Real-time subscription error:', err);
       if (onError) onError(err);
-      onData(mockHotspots.map(h => ({ ...h, dataSource: 'DEMO DATA' })));
+      onData([...this.demoHotspots]);
     });
   }
 
   public async getHotspotById(id: string): Promise<FirestoreHotspot | null> {
     if (isDemoMode() || !db) {
-      const found = mockHotspots.find(h => h.id === id);
-      return found ? { ...found, dataSource: 'DEMO DATA' } : null;
+      const found = this.demoHotspots.find(h => h.id === id);
+      return found ? { ...found } : null;
     }
 
     try {
@@ -157,6 +166,31 @@ class HotspotService {
     const newId = `field-hotspot-${Date.now()}`;
     if (isDemoMode() || isDemoSession || !db) {
       console.info('[HotspotService] Demo Mode: created local hotspot report ID:', newId);
+      const newHotspot: FirestoreHotspot = {
+        id: newId,
+        title: data.title || 'Reported Pollution Hotspot',
+        description: data.description || '',
+        location: data.location || 'Unknown Location',
+        coordinates: data.coordinates || { lat: 12.9716, lng: 77.5946 },
+        distance: data.distance || '0.8 km',
+        estimatedWaste: data.estimatedWaste || 'Approx. 45 kg',
+        category: (data.category as WasteCategory) || 'mixed',
+        severity: (data.severity as Severity) || 'medium',
+        status: 'reported',
+        reportedAt: data.reportedAt || new Date().toISOString().split('T')[0],
+        reporterId: data.reporterId || 'demo-user-1',
+        images: data.images || ['https://images.unsplash.com/photo-1530587191325-3db32d826c18?auto=format&fit=crop&q=80&w=800'],
+        beforePhotoUrl: data.beforePhotoUrl || data.images?.[0] || '',
+        wasteTypes: data.wasteTypes || [data.category || 'mixed'],
+        isRecurring: data.isRecurring ?? false,
+        reportedBy: data.reportedBy || 'Citizen Volunteer',
+        aiAnalysis: data.aiAnalysis,
+        preventionRecommendations: data.preventionRecommendations,
+        dataSource: 'DEMO DATA',
+      };
+
+      this.demoHotspots.unshift(newHotspot);
+      this.notifySubscribers();
       return newId;
     }
 
@@ -176,16 +210,29 @@ class HotspotService {
   }
 
   public async updateHotspotStatus(id: string, status: HotspotStatus): Promise<void> {
+    const foundIndex = this.demoHotspots.findIndex(h => h.id === id);
+    if (foundIndex !== -1) {
+      this.demoHotspots[foundIndex] = {
+        ...this.demoHotspots[foundIndex],
+        status
+      };
+      this.notifySubscribers();
+    }
+
     if (isDemoMode() || !db) {
       console.info(`[HotspotService] Demo Mode: updated hotspot ${id} status to ${status}`);
       return;
     }
 
-    const docRef = doc(db, this.collectionName, id);
-    await updateDoc(docRef, {
-      status,
-      updatedAt: serverTimestamp(),
-    });
+    try {
+      const docRef = doc(db, this.collectionName, id);
+      await updateDoc(docRef, {
+        status,
+        updatedAt: serverTimestamp(),
+      });
+    } catch (err) {
+      console.error('[HotspotService] Error updating hotspot status in Firestore:', err);
+    }
   }
 }
 
