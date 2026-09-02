@@ -11,16 +11,18 @@ import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { ImpactBadge } from '../components/ui/ImpactBadge';
 import { ImpactCelebration } from '../components/ui/impact/ImpactMoments';
+import { RecoveryPlanCard } from '../components/report/RecoveryPlanCard';
 import { cn } from '../utils/cn';
 import type { 
   PollutionReport, WasteCategory, Severity, 
-  EvidenceSourceType, LocationSourceType, PollutionAIAnalysis 
+  EvidenceSourceType, LocationSourceType, PollutionAIAnalysis, RecoveryPlan
 } from '../types';
 import { useAuth } from '../hooks/useAuth';
 import { auth, isDemoMode } from '../lib/firebase';
 import { hotspotService } from '../services/hotspotService';
 import { storageService } from '../services/storageService';
 import { aiAnalysisService } from '../services/aiAnalysisService';
+import { recoveryPlannerService, UNAVAILABLE_MESSAGE } from '../services/recoveryPlannerService';
 
 const WASTE_CATEGORIES: { id: WasteCategory; label: string; icon: string }[] = [
   { id: 'plastic', label: 'Plastic Waste', icon: '🥤' },
@@ -66,6 +68,9 @@ export default function Report() {
   const [aiStepStage, setAiStepStage] = useState<string>('Scanning evidence photo...');
   const [aiResult, setAiResult] = useState<PollutionAIAnalysis | null>(null);
   const [aiError, setAiError] = useState<string | null>(null);
+  const [recoveryPlan, setRecoveryPlan] = useState<RecoveryPlan | null>(null);
+  const [isBuildingRecoveryPlan, setIsBuildingRecoveryPlan] = useState(false);
+  const [recoveryPlanError, setRecoveryPlanError] = useState<string | null>(null);
 
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [isLocating, setIsLocating] = useState<boolean>(false);
@@ -134,6 +139,8 @@ export default function Report() {
       });
 
       setAiResult(analysis);
+      setRecoveryPlan(null);
+      setRecoveryPlanError(null);
       setReport(prev => ({
         ...prev,
         aiAnalysis: {
@@ -154,6 +161,22 @@ export default function Report() {
       clearTimeout(t2);
       clearTimeout(t3);
       setIsAnalyzing(false);
+    }
+  };
+
+  const createRecoveryPlan = async () => {
+    if (!aiResult || isBuildingRecoveryPlan) return;
+    setIsBuildingRecoveryPlan(true);
+    setRecoveryPlanError(null);
+    try {
+      // The planner receives Gemini's structured result only—never the uploaded image or precise location.
+      const plan = await recoveryPlannerService.createPlan({ analysis: aiResult });
+      setRecoveryPlan(plan);
+    } catch (err: any) {
+      console.warn('[Report] Recovery plan unavailable:', err?.message || err);
+      setRecoveryPlanError(err?.message || UNAVAILABLE_MESSAGE);
+    } finally {
+      setIsBuildingRecoveryPlan(false);
     }
   };
 
@@ -856,6 +879,28 @@ export default function Report() {
                       </p>
                     </div>
                   </Card>
+
+                  {aiResult && !recoveryPlan && (
+                    <div className="rounded-2xl border border-fresh-500/25 bg-forest-950/30 p-5 text-center shadow-lg">
+                      <h3 className="text-base font-bold text-white">Turn this analysis into an action plan</h3>
+                      <p className="mx-auto mt-1 max-w-lg text-xs leading-relaxed text-neutral-400">Get practical cleanup, prevention, and monitoring guidance based on the Gemini scene analysis. Field measurements remain separate.</p>
+                      <Button onClick={createRecoveryPlan} disabled={isBuildingRecoveryPlan} className="mt-4 bg-fresh-600 px-5 py-3 text-xs font-bold text-neutral-950 hover:bg-fresh-500 disabled:opacity-70">
+                        {isBuildingRecoveryPlan ? <><Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> Building your recovery plan…</> : <><Sparkles className="mr-1.5 h-4 w-4" /> Create Recovery Plan</>}
+                      </Button>
+                      {recoveryPlanError && (
+                        <div className="mx-auto mt-4 max-w-lg rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-left" role="alert">
+                          <p className="text-xs leading-relaxed text-amber-100">{recoveryPlanError}</p>
+                          <Button variant="outline" onClick={createRecoveryPlan} disabled={isBuildingRecoveryPlan} className="mt-3 border-amber-500/40 text-xs font-bold text-amber-100 hover:bg-amber-500/10">
+                            <RefreshCw className="mr-1.5 h-3.5 w-3.5" /> Retry
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {recoveryPlan && (
+                    <RecoveryPlanCard plan={recoveryPlan} onStartMission={() => navigate('/missions')} />
+                  )}
                 </div>
               )}
             </motion.div>

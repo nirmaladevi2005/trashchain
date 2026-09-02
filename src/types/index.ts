@@ -160,6 +160,35 @@ export interface PollutionAIAnalysis {
   dataClassification: 'AI-ASSISTED' | 'AI-ASSISTED DEMO';
 }
 
+export type RecoveryPlanPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+
+/**
+ * The Recovery Planner receives only structured Gemini analysis. Evidence
+ * photos, coordinates, addresses, identity data, and free-form context are
+ * intentionally excluded from this boundary.
+ */
+export interface RecoveryPlannerRequest {
+  analysis: PollutionAIAnalysis;
+}
+
+export interface RecoveryPlan {
+  title: string;
+  priority: RecoveryPlanPriority;
+  summary: string;
+  immediateActions: string[];
+  safetyPrecautions: string[];
+  cleanupPlan: string[];
+  peopleNeeded: number;
+  recommendedEquipment: string[];
+  sortingGuidance: string[];
+  disposalGuidance: string[];
+  preventionActions: string[];
+  monitoringPlan: string[];
+  estimatedEffort: string;
+  communityMessage: string;
+  dataClassification: 'AI-ASSISTED' | 'DEMO DATA';
+}
+
 export type ReportStatus = 'draft' | 'analyzing' | 'submitted' | 'verified';
 
 export type EvidenceSourceType = 'CAMERA_CAPTURE' | 'GALLERY_UPLOAD';
