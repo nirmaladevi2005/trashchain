@@ -326,8 +326,8 @@ export default function Report() {
     // Live Firebase Auth Source of Truth
     const liveFirebaseUid = auth?.currentUser?.uid;
 
-    // Determine if current session is Demo Mode (unconfigured env OR active demo session OR demo user)
-    const isDemoSession = isDemoMode() || isDemo || isDemoSessionActive || user?.dataSource === 'DEMO DATA' || user?.uid === 'demo-user-1';
+    // Determine if current session is Demo Mode (active demo session OR demo user)
+    const isDemoSession = isDemo || isDemoSessionActive || user?.dataSource === 'DEMO DATA' || user?.uid === 'demo-user-1';
 
     // Auth state initialization race protection (only applies in Live Mode)
     if (!isDemoSession && authLoading) {

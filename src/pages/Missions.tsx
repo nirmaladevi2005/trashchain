@@ -14,7 +14,6 @@ import { EmptyState } from '../components/shared/States';
 import { hotspotService, type FirestoreHotspot } from '../services/hotspotService';
 import { missionService, type FirestoreMission } from '../services/missionService';
 import { useAuth } from '../hooks/useAuth';
-import { isDemoMode } from '../lib/firebase';
 
 const FILTERS = ['All', 'Nearby', 'Critical', 'Plastic', 'Mixed Waste', 'Organic', 'My Missions', 'Completed'];
 const SORTS = ['Highest Impact', 'Nearest', 'Most Urgent', 'Newest'];
@@ -119,7 +118,7 @@ export default function Missions() {
 
     setIsCreatingMission(true);
     try {
-      const isDemoSessionActive = isDemoMode() || isDemo || isDemoSession || user?.dataSource === 'DEMO DATA';
+      const isDemoSessionActive = isDemoSession || isDemo || user?.dataSource === 'DEMO DATA';
       const organizerId = user?.uid || 'demo-user-1';
 
       await missionService.createMissionFromHotspot(
@@ -214,7 +213,7 @@ export default function Missions() {
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <Badge variant="success" className="bg-fresh-500/10 text-fresh-400 border-fresh-500/30 text-[10px] font-mono">
-                {isDemoMode() || isDemo ? 'DEMO MISSION NETWORK' : 'LIVE MISSION NETWORK'}
+                {isDemoSession ? 'DEMO MISSION NETWORK' : 'LIVE MISSION NETWORK'}
               </Badge>
               <span className="text-xs font-mono text-neutral-500">COMMUNITY DISPATCH</span>
             </div>

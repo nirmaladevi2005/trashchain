@@ -2,58 +2,75 @@
 @config "../tailwind.config.js";
 
 :root {
-  --bg-app: #fafafa;
+  --bg-app: #f6f8f5;
   --bg-surface: #ffffff;
-  --bg-surface-subtle: #f4f4f5;
-  --border-color: #e4e4e7;
-  --text-main: #09090b;
-  --text-muted: #71717a;
+  --bg-surface-subtle: #edf2ec;
+  --border-color: #e2e8f0;
+  --text-main: #0f172a;
+  --text-muted: #64748b;
 }
 
 html.dark {
-  --bg-app: #0a0a0a;
-  --bg-surface: #171717;
-  --bg-surface-subtle: #262626;
-  --border-color: #27272a;
-  --text-main: #fafafa;
-  --text-muted: #a1a1aa;
+  --bg-app: #0a0f0d;
+  --bg-surface: #121915;
+  --bg-surface-subtle: #1a241e;
+  --border-color: #1e2c24;
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+}
+
+body {
+  background-color: var(--bg-app);
+  color: var(--text-main);
+  font-family: 'Inter', sans-serif;
+  overflow-x: hidden;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 @layer utilities {
+  /* Environmental Elevation Surface */
+  .env-card {
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: 1rem;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
+    transition: all 0.2s ease-in-out;
+  }
+
+  .env-card:hover {
+    box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.08);
+  }
+
   /* Soft Glassmorphism */
   .glass-card {
     background: rgba(255, 255, 255, 0.85);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(0, 0, 0, 0.08);
+    border: 1px solid rgba(226, 232, 240, 0.8);
   }
 
   html.dark .glass-card {
-    background: rgba(23, 23, 23, 0.85);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(18, 25, 21, 0.85);
+    border: 1px solid rgba(30, 44, 36, 0.8);
   }
 
   .glass-header {
-    background: rgba(255, 255, 255, 0.85);
+    background: rgba(246, 248, 245, 0.85);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
   }
 
   html.dark .glass-header {
-    background: rgba(10, 10, 10, 0.85);
+    background: rgba(10, 15, 13, 0.85);
   }
 
-  /* Environmental Glowing Gradients */
-  .gradient-glow-fresh {
-    box-shadow: 0 0 25px -5px rgba(52, 211, 153, 0.25);
+  /* Environmental Accent Shadows */
+  .shadow-fresh-glow {
+    box-shadow: 0 0 20px -3px rgba(16, 185, 129, 0.2);
   }
 
-  .gradient-glow-amber {
-    box-shadow: 0 0 25px -5px rgba(251, 191, 36, 0.25);
-  }
-
-  .gradient-glow-purple {
-    box-shadow: 0 0 25px -5px rgba(168, 85, 247, 0.25);
+  .shadow-forest-glow {
+    box-shadow: 0 0 20px -3px rgba(21, 128, 61, 0.25);
   }
 
   /* Slow Spin Animation */
@@ -71,11 +88,11 @@ html.dark {
   background: var(--bg-app);
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(115, 115, 115, 0.3);
+  background: rgba(100, 116, 139, 0.3);
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(163, 163, 163, 0.5);
+  background: rgba(100, 116, 139, 0.5);
 }
 
 /* Leaflet Container explicit sizing */
@@ -83,30 +100,22 @@ html.dark {
   width: 100% !important;
   height: 100% !important;
   min-height: 380px !important;
-  background-color: #0a0a0a !important;
+  background-color: var(--bg-app) !important;
+  border-radius: 1rem;
 }
 
 /* Leaflet Popup Styling - Adaptive Light / Dark */
 .custom-hotspot-popup .leaflet-popup-content-wrapper {
-  background: #ffffff;
-  color: #09090b;
+  background: var(--bg-surface);
+  color: var(--text-main);
   border-radius: 1rem;
   padding: 0.25rem;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.08);
-}
-
-html.dark .custom-hotspot-popup .leaflet-popup-content-wrapper {
-  background: #171717;
-  color: #f5f5f5;
-  border: 1px solid #27272a;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15);
+  border: 1px solid var(--border-color);
 }
 
 .custom-hotspot-popup .leaflet-popup-tip {
-  background: #ffffff;
-}
-
-html.dark .custom-hotspot-popup .leaflet-popup-tip {
-  background: #171717;
+  background: var(--bg-surface);
 }
 
 /* Accessibility: Reduced Motion */

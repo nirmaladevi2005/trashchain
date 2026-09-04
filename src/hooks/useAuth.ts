@@ -1,15 +1,14 @@
 import { useState, useEffect } from 'react';
 import { authService, type UserProfile, type UserRole, type SignUpIdentityData } from '../services/authService';
-import { isDemoMode } from '../lib/firebase';
 
 export function useAuth() {
   const [user, setUser] = useState<UserProfile | null>(() => authService.getCurrentUser());
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState<boolean>(() => authService.isAuthInitializing());
 
   useEffect(() => {
-    const unsubscribe = authService.subscribe((profile) => {
+    const unsubscribe = authService.subscribe((profile, isInitializing) => {
       setUser(profile);
-      setLoading(false);
+      setLoading(isInitializing);
     });
     return () => unsubscribe();
   }, []);
@@ -64,6 +63,16 @@ export function useAuth() {
     }
   };
 
+  const logoutDemoUser = async () => {
+    setLoading(true);
+    try {
+      await authService.logoutDemoUser();
+      setUser(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const loginWithGoogle = async (role?: UserRole, org?: string) => {
     setLoading(true);
     try {
@@ -79,11 +88,12 @@ export function useAuth() {
     user,
     role: user?.role || 'CITIZEN',
     isAuthenticated: !!user,
-    isDemo: isDemoMode() || authService.isDemoSession() || user?.dataSource === 'DEMO DATA',
+    isDemo: authService.isDemoSession(),
     isDemoSession: authService.isDemoSession(),
     loading,
     login,
     loginDemoUser,
+    logoutDemoUser,
     signup,
     loginWithGoogle,
     logout,

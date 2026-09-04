@@ -101,16 +101,18 @@ const SESSION_STORAGE_DEMO_KEY = 'trashchain_demo_session';
 class AuthService {
   private isDemoSessionActive: boolean = false;
   private currentUser: UserProfile | null = null;
-  private listeners: ((user: UserProfile | null) => void)[] = [];
+  private listeners: ((user: UserProfile | null, isInitializing: boolean) => void)[] = [];
+  private isInitializing: boolean = true;
 
   constructor() {
-    // Restore session-scoped Demo Mode from sessionStorage
+    // Restore session-scoped Demo Mode strictly from sessionStorage
     if (typeof window !== 'undefined' && window.sessionStorage) {
       this.isDemoSessionActive = sessionStorage.getItem(SESSION_STORAGE_DEMO_KEY) === 'true';
     }
 
-    if (isDemoMode() || this.isDemoSessionActive) {
+    if (this.isDemoSessionActive) {
       this.currentUser = DEMO_USER;
+      this.isInitializing = false;
     }
 
     if (!isDemoMode() && auth) {
@@ -123,28 +125,34 @@ class AuthService {
           }
           const profile = await this.fetchUserProfile(fbUser.uid, fbUser.email || '', fbUser.photoURL);
           this.currentUser = profile;
-          this.notifyListeners();
         } else {
           // Firebase Auth is unauthenticated. Do NOT destroy an active Demo Session!
           if (!this.isDemoSessionActive) {
             this.currentUser = null;
-            this.notifyListeners();
           }
         }
+        this.isInitializing = false;
+        this.notifyListeners();
       });
+    } else {
+      this.isInitializing = false;
     }
   }
 
   private notifyListeners() {
-    this.listeners.forEach(cb => cb(this.currentUser));
+    this.listeners.forEach(cb => cb(this.currentUser, this.isInitializing));
   }
 
   public isDemoSession(): boolean {
-    return isDemoMode() || this.isDemoSessionActive || this.currentUser?.dataSource === 'DEMO DATA';
+    return this.isDemoSessionActive;
   }
 
-  public subscribe(callback: (user: UserProfile | null) => void): () => void {
-    callback(this.currentUser);
+  public isAuthInitializing(): boolean {
+    return this.isInitializing;
+  }
+
+  public subscribe(callback: (user: UserProfile | null, isInitializing: boolean) => void): () => void {
+    callback(this.currentUser, this.isInitializing);
     this.listeners.push(callback);
     return () => {
       this.listeners = this.listeners.filter(cb => cb !== callback);
@@ -152,12 +160,25 @@ class AuthService {
   }
 
   public getCurrentUser(): UserProfile | null {
-    if (isDemoMode() || this.isDemoSessionActive) return DEMO_USER;
+    if (this.isDemoSessionActive) return DEMO_USER;
     return this.currentUser;
   }
 
   private async fetchUserProfile(uid: string, fallbackEmail: string, googlePhotoURL?: string | null): Promise<UserProfile> {
-    if (!db) return DEMO_USER;
+    if (!db) {
+      return {
+        uid,
+        displayName: fallbackEmail.split('@')[0] || 'Field Volunteer',
+        email: fallbackEmail,
+        photoURL: googlePhotoURL || undefined,
+        role: 'CITIZEN',
+        createdAt: new Date().toISOString(),
+        impactScore: 50,
+        missionsCompleted: 0,
+        dataSource: 'FIELD DATA',
+        publicProfile: false,
+      };
+    }
     try {
       const userDocRef = doc(db, 'users', uid);
       const userSnap = await getDoc(userDocRef);
@@ -222,6 +243,8 @@ class AuthService {
         return new Error('Google Sign-In popup was blocked by your browser. Please allow popups and try again.');
       case 'auth/account-exists-with-different-credential':
         return new Error('An account already exists with this email address under a different login provider.');
+      case 'auth/unauthorized-domain':
+        return new Error('Authentication is currently unavailable on this domain. Please try Demo Mode or use an authorized environment.');
       default:
         return new Error(err?.message || 'An authentication error occurred. Please try again.');
     }
@@ -238,10 +261,20 @@ class AuthService {
     return DEMO_USER;
   }
 
+  public async logoutDemoUser(): Promise<void> {
+    console.info('[AuthService] Clearing Demo Mode user session');
+    this.isDemoSessionActive = false;
+    if (typeof window !== 'undefined' && window.sessionStorage) {
+      sessionStorage.removeItem(SESSION_STORAGE_DEMO_KEY);
+    }
+    this.currentUser = null;
+    this.notifyListeners();
+  }
+
   public async login(email: string, pass: string): Promise<UserProfile> {
     if (isDemoMode() || !auth) {
       console.info('[AuthService] Demo Mode login simulation');
-      return DEMO_USER;
+      return this.loginDemoUser();
     }
     try {
       const cred = await signInWithEmailAndPassword(auth, email, pass);
@@ -265,14 +298,7 @@ class AuthService {
   ): Promise<UserProfile> {
     if (isDemoMode() || !auth || !db) {
       console.info('[AuthService] Demo Mode signup simulation');
-      return {
-        ...DEMO_USER,
-        displayName,
-        email,
-        role,
-        organization: org || identityData?.organizationName || DEMO_USER.organization,
-        ...(identityData || {})
-      };
+      return this.loginDemoUser();
     }
     try {
       const cred = await createUserWithEmailAndPassword(auth, email, pass);
@@ -327,7 +353,7 @@ class AuthService {
   public async loginWithGoogle(selectedRole: UserRole = 'CITIZEN', org?: string): Promise<UserProfile> {
     if (isDemoMode() || !auth || !db) {
       console.info('[AuthService] Demo Mode Google Sign-In simulation');
-      return DEMO_USER;
+      return this.loginDemoUser();
     }
     try {
       const provider = new GoogleAuthProvider();

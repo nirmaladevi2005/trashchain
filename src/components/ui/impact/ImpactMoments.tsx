@@ -260,16 +260,15 @@ export function ScoreReveal({ value, suffix = '', prefix = '', className }: Scor
   );
 }
 
-// 2. HIGH-ENERGY CONTINUOUS PARTY-POPPER AMBIENCE COMPONENT
+// 2. SUBTLE ENVIRONMENTAL CELEBRATION AMBIENCE COMPONENT
 export interface CelebrationAmbienceProps {
   intensity?: 'subtle' | 'moderate' | 'high';
   className?: string;
 }
 
-// Climate-tech celebration palette: Emerald, Fresh Green, Gold, White, Violet, Turquoise
-const AMBIENT_PALETTE = ['#059669', '#10b981', '#fbbf24', '#ffffff', '#a855f7', '#06b6d4'];
+const AMBIENT_PALETTE = ['#10b981', '#34d399', '#f59e0b', '#8b5cf6'];
 
-export function CelebrationAmbience({ intensity = 'moderate', className }: CelebrationAmbienceProps) {
+export function CelebrationAmbience({ intensity = 'subtle', className }: CelebrationAmbienceProps) {
   const [prefersReducedMotion, setPrefersReducedMotion] = useState<boolean>(false);
 
   useEffect(() => {
@@ -280,130 +279,44 @@ export function CelebrationAmbience({ intensity = 'moderate', className }: Celeb
 
   if (prefersReducedMotion) return null;
 
-  const count = intensity === 'subtle' ? 40 : intensity === 'moderate' ? 80 : 120;
+  const count = intensity === 'subtle' ? 12 : intensity === 'moderate' ? 24 : 36;
 
   return (
     <div 
       aria-hidden="true" 
-      className={cn("fixed inset-0 pointer-events-none z-[15] overflow-hidden select-none", className)}
+      className={cn("absolute inset-0 pointer-events-none overflow-hidden select-none z-0", className)}
     >
-      {/* VISUAL LEFT PARTY CANNON NOZZLE */}
-      <div className="fixed left-0 top-1/2 -translate-y-1/2 z-20 pointer-events-none">
-        <motion.div 
-          animate={{ scale: [1, 1.25, 1], rotate: [-15, -25, -15] }}
-          transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
-          className="w-12 h-16 bg-gradient-to-r from-emerald-600 via-fresh-500 to-amber-400 rounded-r-3xl shadow-2xl flex items-center justify-center opacity-90 border-r-2 border-white/50"
-        >
-          <div className="w-5 h-5 rounded-full bg-white animate-ping opacity-75" />
-        </motion.div>
-      </div>
-
-      {/* VISUAL RIGHT PARTY CANNON NOZZLE */}
-      <div className="fixed right-0 top-1/2 -translate-y-1/2 z-20 pointer-events-none">
-        <motion.div 
-          animate={{ scale: [1, 1.25, 1], rotate: [15, 25, 15] }}
-          transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut", delay: 0.6 }}
-          className="w-12 h-16 bg-gradient-to-l from-emerald-600 via-fresh-500 to-amber-400 rounded-l-3xl shadow-2xl flex items-center justify-center opacity-90 border-l-2 border-white/50"
-        >
-          <div className="w-5 h-5 rounded-full bg-white animate-ping opacity-75" />
-        </motion.div>
-      </div>
-
-      {/* LEFT CANNON LAUNCHED PARTICLES & RIBBONS */}
-      {Array.from({ length: Math.floor(count / 2) }).map((_, i) => {
+      {Array.from({ length: count }).map((_, i) => {
         const color = AMBIENT_PALETTE[i % AMBIENT_PALETTE.length];
-        const isRibbon = i % 3 === 0;
-        const isStar = i % 5 === 0;
-
-        const targetX = 25 + (i * 2.5); // 25vw to 75vw inward
-        const targetY = (Math.sin(i) * 200); // arc upward/downward
-        const duration = 2.5 + (i % 4) * 0.4;
-        const delay = (i % 6) * 0.4;
+        const startX = 5 + (i * 8) % 90;
+        const duration = 6 + (i % 4) * 2;
+        const delay = (i % 5) * 0.8;
 
         return (
           <motion.div
-            key={`left-pop-${i}`}
-            initial={{
-              opacity: 0,
-              x: '0vw',
-              y: '50vh',
-              scale: 0.3,
-              rotate: 0,
-            }}
+            key={`env-particle-${i}`}
+            initial={{ opacity: 0, y: '100%', x: `${startX}vw`, scale: 0.6 }}
             animate={{
-              opacity: [0, 1, 0.9, 0],
-              x: ['0vw', `${targetX * 0.4}vw`, `${targetX}vw`],
-              y: ['50vh', `calc(50vh + ${targetY - 100}px)`, `calc(50vh + ${targetY + 120}px)`],
-              scale: [0.3, 1.3, 0.9],
-              rotate: [0, 180, 540],
+              opacity: [0, 0.4, 0.4, 0],
+              y: ['100%', '0%'],
+              x: [`${startX}vw`, `${startX + (i % 2 === 0 ? 3 : -3)}vw`],
+              scale: [0.6, 1, 0.6]
             }}
             transition={{
               duration: duration,
               repeat: Infinity,
-              repeatDelay: 1.2,
               delay: delay,
-              ease: "easeOut",
+              ease: "easeInOut"
             }}
             style={{
               position: 'absolute',
-              width: isRibbon ? '4px' : isStar ? '10px' : '9px',
-              height: isRibbon ? '26px' : isStar ? '10px' : '10px',
-              backgroundColor: isStar ? 'transparent' : color,
-              borderRadius: isStar ? '0%' : isRibbon ? '2px' : i % 2 === 0 ? '50%' : '2px',
-              boxShadow: `0 0 12px ${color}`,
+              width: '6px',
+              height: '6px',
+              backgroundColor: color,
+              borderRadius: '50%',
+              opacity: 0.3,
             }}
-          >
-            {isStar && <span style={{ color, fontSize: '14px', fontWeight: 'bold' }}>★</span>}
-          </motion.div>
-        );
-      })}
-
-      {/* RIGHT CANNON LAUNCHED PARTICLES & RIBBONS */}
-      {Array.from({ length: Math.floor(count / 2) }).map((_, i) => {
-        const color = AMBIENT_PALETTE[(i + 3) % AMBIENT_PALETTE.length];
-        const isRibbon = i % 3 === 0;
-        const isStar = i % 4 === 0;
-
-        const targetX = 25 + (i * 2.5); // 25vw to 75vw inward from right
-        const targetY = (Math.cos(i) * 220); // arc upward/downward
-        const duration = 2.4 + (i % 4) * 0.45;
-        const delay = 0.3 + (i % 6) * 0.4;
-
-        return (
-          <motion.div
-            key={`right-pop-${i}`}
-            initial={{
-              opacity: 0,
-              x: '100vw',
-              y: '50vh',
-              scale: 0.3,
-              rotate: 0,
-            }}
-            animate={{
-              opacity: [0, 1, 0.9, 0],
-              x: ['100vw', `${100 - (targetX * 0.4)}vw`, `${100 - targetX}vw`],
-              y: ['50vh', `calc(50vh + ${targetY - 120}px)`, `calc(50vh + ${targetY + 140}px)`],
-              scale: [0.3, 1.3, 0.9],
-              rotate: [0, -180, -540],
-            }}
-            transition={{
-              duration: duration,
-              repeat: Infinity,
-              repeatDelay: 1.2,
-              delay: delay,
-              ease: "easeOut",
-            }}
-            style={{
-              position: 'absolute',
-              width: isRibbon ? '4px' : isStar ? '10px' : '9px',
-              height: isRibbon ? '26px' : isStar ? '10px' : '10px',
-              backgroundColor: isStar ? 'transparent' : color,
-              borderRadius: isStar ? '0%' : isRibbon ? '2px' : i % 2 === 0 ? '50%' : '2px',
-              boxShadow: `0 0 12px ${color}`,
-            }}
-          >
-            {isStar && <span style={{ color, fontSize: '14px', fontWeight: 'bold' }}>✦</span>}
-          </motion.div>
+          />
         );
       })}
     </div>

@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import { 
   Home, Map, PlusCircle, Target, Trophy, User, 
-  Leaf, ShieldCheck, Compass, PanelLeftClose, PanelLeftOpen 
+  Leaf, ShieldCheck, Compass, PanelLeftClose, PanelLeftOpen, Info
 } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { useAuth } from '../../hooks/useAuth';
@@ -18,6 +18,7 @@ const navItems = [
   { icon: ShieldCheck, label: 'Monitoring', path: '/monitoring' },
   { icon: Leaf, label: 'Recovery', path: '/timeline' },
   { icon: Trophy, label: 'Leaderboard', path: '/leaderboard' },
+  { icon: Info, label: 'About', path: '/about' },
   { icon: User, label: 'Profile', path: '/profile' },
 ];
 

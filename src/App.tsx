@@ -18,6 +18,7 @@ import PublicProfile from './pages/PublicProfile';
 import FieldMode from './pages/FieldMode';
 import Monitoring from './pages/Monitoring';
 import Pilots from './pages/Pilots';
+import About from './pages/About';
 
 function App() {
   return (
@@ -48,6 +49,7 @@ function App() {
           <Route path="/pilots/:id" element={<Pilots />} />
           <Route path="/timeline" element={<Timeline />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
+          <Route path="/about" element={<About />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/profile/:id" element={<PublicProfile />} />
         </Route>

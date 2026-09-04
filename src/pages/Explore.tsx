@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { hotspotService, type FirestoreHotspot } from '../services/hotspotService';
 import { missionService, type FirestoreMission } from '../services/missionService';
-import { isDemoMode } from '../lib/firebase';
+import { useAuth } from '../hooks/useAuth';
 import { cn } from '../utils/cn';
 
 type FilterType = 'all' | 'critical' | 'reported' | 'mission' | 'recovered' | 'transformed';
@@ -18,13 +18,14 @@ type FilterType = 'all' | 'critical' | 'reported' | 'mission' | 'recovered' | 't
 export default function Explore() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { isDemoSession } = useAuth();
 
   const [hotspotsList, setHotspotsList] = useState<FirestoreHotspot[]>([]);
   const [missionsList, setMissionsList] = useState<FirestoreMission[]>([]);
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedHotspot, setSelectedHotspotState] = useState<FirestoreHotspot | null>(null);
-  const isDemo = isDemoMode();
+  const isDemo = isDemoSession;
 
   // Synchronize selectedHotspot state with URL query parameter for clean deep-linking
   const setSelectedHotspot = (hotspot: FirestoreHotspot | null) => {
@@ -104,10 +105,10 @@ export default function Explore() {
   }, [hotspotsList]);
 
   return (
-    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 text-neutral-900 dark:text-neutral-100 flex flex-col font-sans transition-colors duration-200">
+    <div className="min-h-screen bg-[#F6F8F5] dark:bg-[#0A0F0D] text-[#0F172A] dark:text-[#F8FAFC] flex flex-col font-sans transition-colors duration-200">
       
       {/* 1. EXPLORE PAGE HEADER */}
-      <header className="bg-white dark:bg-neutral-950 border-b border-neutral-200 dark:border-neutral-850 px-4 py-6 md:px-8">
+      <header className="bg-white dark:bg-[#121915] border-b border-[#E2E8F0] dark:border-[#1E2C24] px-4 py-5 md:px-8">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2">

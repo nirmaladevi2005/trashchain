@@ -1,25 +1,28 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
 import { 
   TreePine, ArrowRight, ShieldCheck, MapPin, 
-  Sparkles, Users, ArrowUpRight, Flame, Globe2
+  Sparkles, Users, Flame, Globe2, Brain, FileText,
+  CheckCircle2, Target, Menu, X, Loader2
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
-import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
-import { ImpactBadge } from '../components/ui/ImpactBadge';
-import { ScoreReveal, CelebrationAmbience } from '../components/ui/impact/ImpactMoments';
+import { ThemeToggle } from '../components/ui/ThemeToggle';
+import { ScoreReveal } from '../components/ui/impact/ImpactMoments';
 import { BrandLogo } from '../components/ui/BrandLogo';
-import { isDemoMode } from '../lib/firebase';
+import { CustomCursor } from '../components/ui/CustomCursor';
+import { ScrollReveal, StaggerContainer, StaggerItem } from '../components/ui/ScrollReveal';
+import { useAuth } from '../hooks/useAuth';
 import { cn } from '../utils/cn';
 
-const RECOVERY_STAGES = [
-  { step: '01', title: 'Detect', desc: 'Community members log pollution hotspots with GPS coordinates and photographic evidence.', icon: MapPin, color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/30' },
-  { step: '02', title: 'Mobilize', desc: 'Volunteers and local groups organize targeted cleanup missions with clear waste targets.', icon: Users, color: 'text-yellow-400', bg: 'bg-yellow-500/10 border-yellow-500/30' },
-  { step: '03', title: 'Recover', desc: 'Field Mode tracks real waste removed, segregated weights, and safety protocols.', icon: Flame, color: 'text-fresh-400', bg: 'bg-fresh-500/10 border-fresh-500/30' },
-  { step: '04', title: 'Transform', desc: 'AI analyzes site conditions and recommends sustainable barrier interventions to stop dumping.', icon: Sparkles, color: 'text-purple-400', bg: 'bg-purple-500/10 border-purple-500/30' },
-  { step: '05', title: 'Monitor', desc: 'Biweekly 30/60/90-day surveillance verifies whether waste recurrence has been prevented.', icon: ShieldCheck, color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/30' },
+// 6-Step Journey Data
+const JOURNEY_STEPS = [
+  { step: '01', title: 'Report', desc: 'Spot pollution and log evidence with GPS location.', icon: MapPin, color: 'text-rose-500', bg: 'bg-rose-500/10' },
+  { step: '02', title: 'Analyze', desc: 'Gemini AI evaluates waste categories and risk levels.', icon: Brain, color: 'text-purple-500', bg: 'bg-purple-500/10' },
+  { step: '03', title: 'Plan', desc: 'OpenAI formulates actionable cleanup & safety plans.', icon: FileText, color: 'text-indigo-500', bg: 'bg-indigo-500/10' },
+  { step: '04', title: 'Mobilize', desc: 'Convert reports into organized volunteer missions.', icon: Users, color: 'text-amber-500', bg: 'bg-amber-500/10' },
+  { step: '05', title: 'Recover', desc: 'Remove debris and install physical site barriers.', icon: Flame, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
+  { step: '06', title: 'Monitor', desc: 'Track post-cleanup health to prevent repeat dumping.', icon: ShieldCheck, color: 'text-sky-500', bg: 'bg-sky-500/10' },
 ];
 
 const BEFORE_AFTER_DATA = [
@@ -27,650 +30,736 @@ const BEFORE_AFTER_DATA = [
     stage: 'BEFORE',
     status: 'Polluted Illegal Dump Site',
     badge: 'CRITICAL HOTSPOT',
-    badgeColor: 'bg-coral-500/20 text-coral-300 border-coral-500/30',
+    badgeColor: 'bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/30',
     img: 'https://images.unsplash.com/photo-1530587191325-3db32d826c18?auto=format&fit=crop&q=80&w=800',
-    desc: 'Unmanaged urban lot accumulating 105 kg/month mixed plastic and debris. 78% risk of toxic runoff.',
+    desc: 'Unmanaged roadside accumulation of plastic and hazardous debris threatening soil health.',
     stats: '105 kg Dumping Rate'
   },
   {
     stage: 'AFTER',
     status: 'Cleaned & Remediated Site',
     badge: 'VERIFIED RECOVERY',
-    badgeColor: 'bg-fresh-500/20 text-fresh-300 border-fresh-500/30',
+    badgeColor: 'bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 border-emerald-500/30',
     img: 'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&q=80&w=800',
-    desc: 'Community volunteer mission removed 340 kg waste. Verified through GPS photo timestamps.',
+    desc: 'Community volunteer mission safely removed 340 kg of waste. Verified through GPS timestamps.',
     stats: '100% Waste Removed'
   },
   {
     stage: 'FUTURE',
     status: 'Transformed Community Place',
     badge: 'AI TRANSFORMATION',
-    badgeColor: 'bg-purple-500/20 text-purple-300 border-purple-500/30',
+    badgeColor: 'bg-purple-500/10 text-purple-800 dark:text-purple-300 border-purple-500/30',
     img: 'https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?auto=format&fit=crop&q=80&w=800',
-    desc: 'Community Mini Garden & Segregation Hub installed. Projected repeat dumping reduction: 65%.',
-    stats: '65% Dumping Reduction'
+    desc: 'Community Mini Garden & Composting Hub installed. Repeat dumping risk cut by 65%.',
+    stats: '65% Dumping Cut'
   }
-];
-
-const PREVENTION_IDEAS = [
-  { icon: '🌱', title: 'Community Mini Garden', desc: 'Converts empty dumping edges into raised planter beds, creating positive public ownership.', risk: '65% Reduction' },
-  { icon: '🎨', title: 'Public Mural & Barrier', desc: 'Adds vibrant community artwork and physical fencing to signal active surveillance.', risk: '58% Reduction' },
-  { icon: '♻️', title: 'Segregation & Compost Hub', desc: 'Establishes organic composting bins to divert food waste away from illegal roadside dumping.', risk: '72% Reduction' }
 ];
 
 export default function Landing() {
   const navigate = useNavigate();
+  const { isAuthenticated, isDemoSession, loading: authLoading, loginDemoUser, logoutDemoUser, logout } = useAuth();
   const [activeTab, setActiveTab] = useState<number>(0);
-  const isDemo = isDemoMode();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
+  const isDemo = isDemoSession;
+
+  const handleExploreDemo = async () => {
+    await loginDemoUser();
+    navigate('/dashboard');
+  };
+
+  const handleExitDemoToLogin = async () => {
+    await logoutDemoUser();
+    navigate('/login');
+  };
+
+  const handleSignOut = async () => {
+    await logout();
+    navigate('/login');
+  };
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-neutral-100 font-sans selection:bg-forest-500 selection:text-white">
+    <div className="min-h-screen bg-[#F6F8F5] dark:bg-[#0A0F0D] text-[#0F172A] dark:text-[#F8FAFC] font-sans selection:bg-emerald-500 selection:text-white relative overflow-x-hidden transition-colors duration-200">
+      <CustomCursor />
       
-      {/* 1. NAVIGATION BAR */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-neutral-950/80 backdrop-blur-md border-b border-neutral-850">
+      {/* 1. LANDING PAGE TOP NAVIGATION BAR (ONLY ON LANDING /) */}
+      <header className="sticky top-0 z-50 bg-white/80 dark:bg-[#0A0F0D]/80 backdrop-blur-md border-b border-[#E2E8F0] dark:border-[#1E2C24] shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <Link to="/" className="flex items-center">
+          <Link to="/" className="flex items-center gap-2">
             <BrandLogo variant="full" size="md" />
           </Link>
 
-          <div className="hidden md:flex items-center gap-6 text-xs font-semibold text-neutral-300">
-            <Link to="/explore" className="hover:text-fresh-400 transition-colors">Explore Map</Link>
-            <Link to="/missions" className="hover:text-fresh-400 transition-colors">Missions</Link>
-            <Link to="/report" className="hover:text-fresh-400 transition-colors">Report Hotspot</Link>
-            <Link to="/monitoring" className="hover:text-fresh-400 transition-colors">Surveillance</Link>
+          {/* Desktop Navigation Links */}
+          <div className="hidden lg:flex items-center gap-7 text-xs font-mono font-semibold text-[#64748B] dark:text-[#94A3B8]">
+            <Link to="/dashboard" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">Home</Link>
+            <Link to="/explore" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">Explore</Link>
+            <Link to="/missions" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">Missions</Link>
+            <Link to="/report" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">Report</Link>
+            <Link to="/timeline" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">Timeline</Link>
+            <Link to="/leaderboard" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">Leaderboard</Link>
+            <a href="#about-section" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">About</a>
           </div>
 
-          <div className="flex items-center gap-3">
-            <Link to="/login" className="text-xs font-semibold text-neutral-300 hover:text-white transition-colors px-3 py-2">
-              Log in
-            </Link>
-            <Link to="/report">
-              <Button size="sm" className="bg-forest-600 hover:bg-forest-700 text-white font-bold text-xs shadow-md">
-                Start Recovering <ArrowRight className="w-3.5 h-3.5 ml-1" />
-              </Button>
-            </Link>
+          {/* Right Actions: Theme Toggle -> Auth State Buttons */}
+          <div className="hidden sm:flex items-center gap-2.5">
+            <ThemeToggle />
+
+            {authLoading ? (
+              <div className="w-20 h-8 flex items-center justify-center">
+                <Loader2 className="w-4 h-4 animate-spin text-emerald-600 dark:text-emerald-400" />
+              </div>
+            ) : isDemoSession ? (
+              <>
+                <Badge variant="warning" className="bg-amber-500/20 text-amber-900 dark:text-amber-300 border-amber-500/30 text-[10px] font-mono px-2.5 py-1">
+                  DEMO MODE
+                </Badge>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate('/dashboard')}
+                  className="border-[#E2E8F0] dark:border-[#1E2C24] bg-transparent text-[#0F172A] dark:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 font-bold text-xs rounded-xl px-3.5 py-2 transition-all"
+                >
+                  Dashboard
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleExitDemoToLogin}
+                  className="border-[#E2E8F0] dark:border-[#1E2C24] bg-transparent text-[#0F172A] dark:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 font-bold text-xs rounded-xl px-3.5 py-2 transition-all"
+                >
+                  Log In
+                </Button>
+              </>
+            ) : isAuthenticated ? (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate('/dashboard')}
+                  className="border-[#E2E8F0] dark:border-[#1E2C24] bg-transparent text-[#0F172A] dark:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 font-bold text-xs rounded-xl px-3.5 py-2 transition-all"
+                >
+                  Dashboard
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate('/profile')}
+                  className="border-[#E2E8F0] dark:border-[#1E2C24] bg-transparent text-[#0F172A] dark:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 font-bold text-xs rounded-xl px-3.5 py-2 transition-all"
+                >
+                  Profile
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleSignOut}
+                  className="border-[#E2E8F0] dark:border-[#1E2C24] bg-transparent text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 font-bold text-xs rounded-xl px-3 py-2 transition-all"
+                >
+                  Sign Out
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleExploreDemo}
+                  className="border-[#E2E8F0] dark:border-[#1E2C24] bg-transparent text-[#0F172A] dark:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 font-bold text-xs rounded-xl px-3.5 py-2 transition-all"
+                >
+                  Explore Demo
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate('/login')}
+                  className="border-[#E2E8F0] dark:border-[#1E2C24] bg-transparent text-[#0F172A] dark:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 font-bold text-xs rounded-xl px-3.5 py-2 transition-all"
+                >
+                  Log In
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => navigate('/signup')}
+                  className="bg-[#15803D] hover:bg-[#166534] text-white font-bold text-xs rounded-xl px-4 py-2 shadow-sm transition-all"
+                >
+                  Get Started
+                </Button>
+              </>
+            )}
+          </div>
+
+          {/* Mobile Hamburger Button */}
+          <div className="flex items-center gap-2 sm:hidden">
+            <ThemeToggle />
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="p-2 text-[#0F172A] dark:text-white rounded-lg hover:bg-neutral-200/50 dark:hover:bg-neutral-800"
+              aria-label="Toggle Navigation Menu"
+            >
+              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            </button>
           </div>
         </div>
-      </nav>
 
-      {/* 2. CINEMATIC 2-COLUMN HERO SECTION */}
-      <header className="relative pt-24 pb-20 md:pt-32 md:pb-28 px-4 sm:px-6 lg:px-8 overflow-hidden border-b border-neutral-850">
-        <CelebrationAmbience intensity="subtle" />
-        
-        {/* Background Visual Layers */}
-        <div className="absolute inset-0 bg-gradient-to-b from-forest-950/40 via-neutral-950 to-neutral-950 pointer-events-none" />
-        <div 
-          className="absolute inset-0 opacity-15 pointer-events-none"
-          style={{
-            backgroundImage: 'radial-gradient(circle at 50% 30%, #34d399 0%, transparent 65%), linear-gradient(#1f2937 1px, transparent 1px), linear-gradient(90deg, #1f2937 1px, transparent 1px)',
-            backgroundSize: '100% 100%, 36px 36px, 36px 36px'
-          }}
-        />
+        {/* Mobile Navigation Drawer */}
+        {mobileMenuOpen && (
+          <div className="sm:hidden border-t border-[#E2E8F0] dark:border-[#1E2C24] bg-white dark:bg-[#121915] px-4 pt-3 pb-6 space-y-3 font-mono text-sm">
+            <Link to="/dashboard" onClick={() => setMobileMenuOpen(false)} className="block py-2 text-[#0F172A] dark:text-white font-semibold">Home</Link>
+            <Link to="/explore" onClick={() => setMobileMenuOpen(false)} className="block py-2 text-[#0F172A] dark:text-white font-semibold">Explore</Link>
+            <Link to="/missions" onClick={() => setMobileMenuOpen(false)} className="block py-2 text-[#0F172A] dark:text-white font-semibold">Missions</Link>
+            <Link to="/report" onClick={() => setMobileMenuOpen(false)} className="block py-2 text-[#0F172A] dark:text-white font-semibold">Report</Link>
+            <Link to="/timeline" onClick={() => setMobileMenuOpen(false)} className="block py-2 text-[#0F172A] dark:text-white font-semibold">Timeline</Link>
+            <Link to="/leaderboard" onClick={() => setMobileMenuOpen(false)} className="block py-2 text-[#0F172A] dark:text-white font-semibold">Leaderboard</Link>
+            <a href="#about-section" onClick={() => setMobileMenuOpen(false)} className="block py-2 text-[#0F172A] dark:text-white font-semibold">About</a>
 
-        <div className="max-w-7xl mx-auto relative z-10">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+            <div className="pt-3 border-t border-[#E2E8F0] dark:border-[#1E2C24] space-y-2">
+              {authLoading ? (
+                <div className="flex justify-center py-2">
+                  <Loader2 className="w-5 h-5 animate-spin text-emerald-600 dark:text-emerald-400" />
+                </div>
+              ) : isDemoSession ? (
+                <>
+                  <div className="flex justify-center py-1">
+                    <Badge variant="warning" className="bg-amber-500/20 text-amber-900 dark:text-amber-300 border-amber-500/30 text-[10px] font-mono px-2.5 py-1">
+                      DEMO MODE
+                    </Badge>
+                  </div>
+                  <Button
+                    onClick={() => { setMobileMenuOpen(false); navigate('/dashboard'); }}
+                    className="w-full bg-[#15803D] hover:bg-[#166534] text-white font-bold py-3 text-xs rounded-xl"
+                  >
+                    Go to Dashboard (Demo)
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={async () => {
+                      setMobileMenuOpen(false);
+                      await handleExitDemoToLogin();
+                    }}
+                    className="w-full border-[#E2E8F0] dark:border-[#1E2C24] bg-transparent text-[#0F172A] dark:text-white font-bold py-3 text-xs rounded-xl"
+                  >
+                    Log In to Live Mode
+                  </Button>
+                </>
+              ) : isAuthenticated ? (
+                <>
+                  <Button
+                    onClick={() => { setMobileMenuOpen(false); navigate('/dashboard'); }}
+                    className="w-full bg-[#15803D] hover:bg-[#166534] text-white font-bold py-3 text-xs rounded-xl"
+                  >
+                    Go to Dashboard
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => { setMobileMenuOpen(false); navigate('/profile'); }}
+                    className="w-full border-[#E2E8F0] dark:border-[#1E2C24] bg-transparent text-[#0F172A] dark:text-white font-bold py-3 text-xs rounded-xl"
+                  >
+                    View Profile
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={async () => {
+                      setMobileMenuOpen(false);
+                      await handleSignOut();
+                    }}
+                    className="w-full border-rose-200 dark:border-rose-900/40 text-rose-600 dark:text-rose-400 font-bold py-3 text-xs rounded-xl"
+                  >
+                    Sign Out
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button
+                    variant="outline"
+                    onClick={async () => {
+                      setMobileMenuOpen(false);
+                      await handleExploreDemo();
+                    }}
+                    className="w-full border-[#E2E8F0] dark:border-[#1E2C24] bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-bold py-3 text-xs rounded-xl"
+                  >
+                    Explore Demo →
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => { setMobileMenuOpen(false); navigate('/login'); }}
+                    className="w-full border-[#E2E8F0] dark:border-[#1E2C24] bg-transparent text-[#0F172A] dark:text-white font-bold py-3 text-xs rounded-xl"
+                  >
+                    Log In
+                  </Button>
+                  <Button
+                    onClick={() => { setMobileMenuOpen(false); navigate('/signup'); }}
+                    className="w-full bg-[#15803D] hover:bg-[#166534] text-white font-bold py-3 text-xs rounded-xl shadow-sm"
+                  >
+                    Create Account
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+      </header>
+
+      {/* 2. CINEMATIC SPLIT HERO SECTION (HIGHLY VISIBLE IMAGERY AT 40-60% STRENGTH) */}
+      <section className="relative min-h-[85vh] py-16 flex flex-col justify-between px-4 sm:px-6 lg:px-8 overflow-hidden">
+
+        {/* SPLIT VISUAL BACKGROUND: POLLUTED (LEFT) / RESTORED (RIGHT) */}
+        <div className="absolute inset-0 grid grid-cols-1 md:grid-cols-2 pointer-events-none z-0">
+          {/* Left Polluted Image */}
+          <div className="relative h-full overflow-hidden">
+            <img
+              src="https://images.unsplash.com/photo-1530587191325-3db32d826c18?auto=format&fit=crop&q=80&w=1400"
+              alt="Polluted dumping area"
+              className="w-full h-full object-cover filter contrast-110 brightness-90"
+            />
+          </div>
+          {/* Right Restored Image */}
+          <div className="relative h-full overflow-hidden">
+            <img
+              src="https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&q=80&w=1400"
+              alt="Restored environmental space"
+              className="w-full h-full object-cover filter brightness-95"
+            />
+          </div>
+        </div>
+
+        {/* CONTROLLED OVERLAY FOR CRISP TEXT READABILITY (40-60% STRENGTH) */}
+        <div className="absolute inset-0 bg-[#F6F8F5]/75 dark:bg-[#0A0F0D]/75 pointer-events-none z-0 transition-colors duration-200" />
+
+        {/* HERO CONTENT */}
+        <div className="max-w-7xl mx-auto w-full relative z-10 my-auto pt-4">
+          <div className="max-w-3xl space-y-6 text-left">
             
-            {/* LEFT COLUMN: HERO CONTENT */}
-            <div className="lg:col-span-6 space-y-6 text-left">
-              {/* Status Badge */}
-              <motion.div 
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-forest-950/90 border border-forest-500/40 text-fresh-400 text-xs font-mono font-bold shadow-lg"
-              >
-                <span className="w-2.5 h-2.5 rounded-full bg-fresh-400 animate-ping shrink-0" />
+            {/* CLEAN COMPACT SYSTEM STATUS PILL */}
+            <ScrollReveal variant="fade-up" delay={0.05}>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-800 dark:text-emerald-300 text-xs font-mono font-medium shadow-sm">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
                 <span>TRASHCHAIN RECOVERY NETWORK</span>
-                <span className="text-neutral-500">•</span>
-                <span className="text-neutral-300 font-sans">{isDemo ? 'DEMO PILOT MODE' : 'LIVE FIREBASE CONNECTED'}</span>
-              </motion.div>
+                <span className="text-neutral-400">•</span>
+                <span className="font-bold">{isDemo ? 'DEMO MODE' : 'LIVE FIREBASE CONNECTED'}</span>
+              </div>
+            </ScrollReveal>
 
-              {/* Primary Headline */}
-              <motion.h1 
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-                className="text-4xl sm:text-6xl md:text-6xl lg:text-7xl font-black text-white tracking-tight leading-[1.05] font-display"
-              >
-                Don't Just Clean It.<br />
-                <span className="bg-clip-text text-transparent bg-gradient-to-r from-fresh-400 via-emerald-300 to-forest-400">
-                  Transform It.
+            {/* Headline */}
+            <ScrollReveal variant="fade-up" delay={0.15}>
+              <h1 className="text-4xl sm:text-6xl md:text-7xl font-black tracking-tight leading-[1.05] font-display text-[#0F172A] dark:text-white">
+                Turn Pollution<br />
+                into{' '}
+                <span className="text-emerald-600 dark:text-emerald-400">
+                  Possibility
                 </span>
-              </motion.h1>
+              </h1>
+            </ScrollReveal>
 
-              {/* Supporting Statement */}
-              <motion.div 
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-                className="space-y-2 text-base sm:text-lg text-neutral-300 font-normal leading-relaxed"
-              >
-                <p className="font-semibold text-white">
-                  Report pollution. Coordinate recovery. Measure impact. Prevent recurrence.
-                </p>
-                <p className="text-sm text-neutral-400">
-                  Community-powered environmental recovery turning neglected waste sites into verified community spaces.
-                </p>
-              </motion.div>
+            {/* Supporting Copy */}
+            <ScrollReveal variant="fade-up" delay={0.25}>
+              <p className="text-base sm:text-lg text-[#64748B] dark:text-[#94A3B8] max-w-xl font-sans leading-relaxed">
+                TrashChain connects communities to report pollution, organize recovery, and prevent the cycle from repeating.
+              </p>
+            </ScrollReveal>
 
-              {/* Hero CTAs */}
-              <motion.div 
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-                className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 pt-2"
-              >
+            {/* Hero CTAs */}
+            <ScrollReveal variant="fade-up" delay={0.35}>
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 pt-2">
                 <Button 
                   size="lg" 
-                  onClick={() => navigate('/login')}
-                  className="bg-forest-600 hover:bg-forest-700 text-white font-bold py-4 px-8 text-base shadow-xl shadow-forest-600/30 tracking-wide rounded-2xl flex items-center justify-center gap-2"
+                  onClick={() => navigate('/report')}
+                  className="bg-[#15803D] hover:bg-[#166534] text-white font-bold py-3.5 px-7 text-base rounded-xl shadow-sm flex items-center justify-center gap-2"
                 >
-                  Explore Demo →
+                  Report an Issue <ArrowRight className="w-5 h-5" />
                 </Button>
 
                 <Button 
                   variant="outline" 
                   size="lg"
-                  onClick={() => navigate('/report')}
-                  className="border-neutral-700 bg-neutral-900/80 hover:bg-neutral-850 text-white font-bold py-4 px-8 text-base rounded-2xl flex items-center justify-center gap-2"
+                  onClick={() => navigate('/explore')}
+                  className="border-[#E2E8F0] dark:border-[#1E2C24] bg-white dark:bg-[#121915] text-[#0F172A] dark:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 font-bold py-3.5 px-7 text-base rounded-xl shadow-sm flex items-center justify-center gap-2"
                 >
-                  Start a Recovery <ArrowRight className="w-5 h-5 text-fresh-400" />
+                  Explore Map <Globe2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
                 </Button>
-              </motion.div>
-
-              {/* Trust Badge Line */}
-              <motion.div 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.4 }}
-                className="flex items-center gap-4 text-xs text-neutral-400 font-mono pt-2"
-              >
-                <span className="flex items-center gap-1.5"><ShieldCheck className="w-4 h-4 text-fresh-400" /> Geo-Verified</span>
-                <span>•</span>
-                <span className="flex items-center gap-1.5"><Users className="w-4 h-4 text-amber-400" /> Community-Powered</span>
-                <span>•</span>
-                <span className="flex items-center gap-1.5"><Sparkles className="w-4 h-4 text-purple-400" /> AI-Assisted</span>
-              </motion.div>
-            </div>
-
-            {/* RIGHT COLUMN: ANIMATED ENVIRONMENTAL RECOVERY NETWORK VISUAL */}
-            <div className="lg:col-span-6">
-              <motion.div 
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.3, duration: 0.6 }}
-                className="relative bg-neutral-900/90 border border-neutral-800 rounded-3xl p-6 shadow-2xl backdrop-blur-md overflow-hidden min-h-[420px] flex flex-col justify-between"
-              >
-                {/* Background Radar Waves */}
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-20">
-                  <div className="w-72 h-72 rounded-full border border-fresh-400 animate-ping" />
-                  <div className="w-96 h-96 rounded-full border border-forest-500 absolute" />
-                </div>
-
-                {/* Card Header */}
-                <div className="flex items-center justify-between border-b border-neutral-800 pb-4 relative z-10">
-                  <div className="flex items-center gap-3">
-                    <div className="w-3 h-3 rounded-full bg-coral-500 animate-pulse" />
-                    <div className="w-3 h-3 rounded-full bg-amber-500" />
-                    <div className="w-3 h-3 rounded-full bg-fresh-500" />
-                    <span className="text-xs font-mono font-bold text-neutral-300">LIVE RECOVERY PIPELINE</span>
-                  </div>
-                  <ImpactBadge type={isDemo ? "ESTIMATED" : "VERIFIED"} size="sm" />
-                </div>
-
-                {/* Floating Hotspot Nodes Network */}
-                <div className="relative my-8 h-56 flex items-center justify-center z-10">
-                  
-                  {/* Connected SVG lines */}
-                  <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-40">
-                    <line x1="20%" y1="30%" x2="50%" y2="50%" stroke="#f59e0b" strokeWidth="2" strokeDasharray="4 4" />
-                    <line x1="50%" y1="50%" x2="80%" y2="35%" stroke="#34d399" strokeWidth="2" />
-                    <line x1="50%" y1="50%" x2="70%" y2="80%" stroke="#a855f7" strokeWidth="2" strokeDasharray="2 2" />
-                  </svg>
-
-                  {/* Hotspot 1: Reported */}
-                  <motion.div 
-                    animate={{ y: [0, -6, 0] }}
-                    transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                    className="absolute top-[10%] left-[5%] bg-neutral-950/90 border border-coral-500/50 p-3 rounded-2xl shadow-lg flex items-center gap-3"
-                  >
-                    <div className="w-8 h-8 rounded-xl bg-coral-500/20 text-coral-400 flex items-center justify-center font-bold text-xs">
-                      01
-                    </div>
-                    <div className="text-left font-mono">
-                      <span className="text-[9px] text-coral-400 uppercase font-bold block">REPORTED HOTSPOT</span>
-                      <span className="text-xs font-bold text-white block">Pine Street Dump</span>
-                      <span className="text-[10px] text-neutral-400">105 kg Waste</span>
-                    </div>
-                  </motion.div>
-
-                  {/* Hotspot 2: Active Mission */}
-                  <motion.div 
-                    animate={{ y: [0, 8, 0] }}
-                    transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
-                    className="absolute top-[40%] left-[38%] bg-neutral-950/90 border border-amber-500/50 p-3.5 rounded-2xl shadow-xl flex items-center gap-3 z-20"
-                  >
-                    <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold text-xs">
-                      02
-                    </div>
-                    <div className="text-left font-mono">
-                      <span className="text-[9px] text-amber-400 uppercase font-bold block">ACTIVE MISSION</span>
-                      <span className="text-xs font-bold text-white block">EcoAlliance Cleanup</span>
-                      <span className="text-[10px] text-neutral-400">12 Volunteers Active</span>
-                    </div>
-                  </motion.div>
-
-                  {/* Hotspot 3: Verified Recovery */}
-                  <motion.div 
-                    animate={{ y: [0, -8, 0] }}
-                    transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-                    className="absolute top-[15%] right-[5%] bg-neutral-950/90 border border-fresh-500/50 p-3 rounded-2xl shadow-lg flex items-center gap-3"
-                  >
-                    <div className="w-8 h-8 rounded-xl bg-fresh-500/20 text-fresh-400 flex items-center justify-center font-bold text-xs">
-                      03
-                    </div>
-                    <div className="text-left font-mono">
-                      <span className="text-[9px] text-fresh-400 uppercase font-bold block">VERIFIED RECOVERY</span>
-                      <span className="text-xs font-bold text-white block">340 kg Removed</span>
-                      <span className="text-[10px] text-neutral-400">GPS Timestamped</span>
-                    </div>
-                  </motion.div>
-
-                  {/* Hotspot 4: AI Transformation */}
-                  <motion.div 
-                    animate={{ y: [0, 6, 0] }}
-                    transition={{ duration: 4.2, repeat: Infinity, ease: "easeInOut", delay: 1.5 }}
-                    className="absolute bottom-[5%] right-[15%] bg-neutral-950/90 border border-purple-500/50 p-3 rounded-2xl shadow-lg flex items-center gap-3"
-                  >
-                    <div className="w-8 h-8 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center font-bold text-xs">
-                      04
-                    </div>
-                    <div className="text-left font-mono">
-                      <span className="text-[9px] text-purple-400 uppercase font-bold block">AI TRANSFORMATION</span>
-                      <span className="text-xs font-bold text-white block">Mini Garden Hub</span>
-                      <span className="text-[10px] text-neutral-400">65% Dumping Cut</span>
-                    </div>
-                  </motion.div>
-
-                </div>
-
-                {/* Footer Metrics */}
-                <div className="grid grid-cols-3 gap-3 border-t border-neutral-800 pt-4 relative z-10 font-mono text-center">
-                  <div className="p-2 rounded-xl bg-neutral-950/50 border border-neutral-850">
-                    <span className="text-[9px] text-neutral-400 block">TOTAL RECOVERED</span>
-                    <span className="text-sm font-black text-fresh-400">3,450 kg</span>
-                  </div>
-                  <div className="p-2 rounded-xl bg-neutral-950/50 border border-neutral-850">
-                    <span className="text-[9px] text-neutral-400 block">ACTIVE MISSIONS</span>
-                    <span className="text-sm font-black text-amber-400">14 Pilots</span>
-                  </div>
-                  <div className="p-2 rounded-xl bg-neutral-950/50 border border-neutral-850">
-                    <span className="text-[9px] text-neutral-400 block">RECURRENCE CUT</span>
-                    <span className="text-sm font-black text-purple-400">78% Rate</span>
-                  </div>
-                </div>
-
-              </motion.div>
-            </div>
-
-          </div>
-        </div>
-      </header>
-
-      {/* 3. RECOVERY JOURNEY: 5 CONNECTED STAGES */}
-      <section className="py-20 px-4 max-w-6xl mx-auto border-b border-neutral-850">
-        <div className="text-center space-y-3 mb-16">
-          <Badge variant="success" className="bg-fresh-500/10 text-fresh-400 border-fresh-500/30">
-            End-to-End System
-          </Badge>
-          <h2 className="text-3xl sm:text-4xl font-black text-white">From Pollution to Recovery</h2>
-          <p className="text-neutral-400 text-sm max-w-xl mx-auto">
-            A continuous community process ensuring cleaned places stay clean forever.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 relative">
-          {RECOVERY_STAGES.map((stg) => {
-            const Icon = stg.icon;
-            return (
-              <div 
-                key={stg.step} 
-                className={cn(
-                  "p-5 rounded-2xl border transition-all duration-300 hover:translate-y-[-4px]",
-                  stg.bg
-                )}
-              >
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-xs font-mono font-bold text-neutral-400">{stg.step}</span>
-                  <Icon className={cn("w-5 h-5", stg.color)} />
-                </div>
-                <h3 className="font-bold text-white text-base mb-1">{stg.title}</h3>
-                <p className="text-xs text-neutral-300 leading-relaxed font-sans">{stg.desc}</p>
               </div>
-            );
-          })}
-        </div>
-      </section>
+            </ScrollReveal>
 
-      {/* 4. BEFORE / AFTER / FUTURE COMPARISON */}
-      <section className="py-20 px-4 max-w-5xl mx-auto border-b border-neutral-850">
-        <div className="text-center space-y-3 mb-12">
-          <Badge variant="outline" className="border-purple-500/40 text-purple-300 bg-purple-500/10">
-            Real Site Progression
-          </Badge>
-          <h2 className="text-3xl sm:text-4xl font-black text-white">See What Recovery Looks Like</h2>
-          <p className="text-neutral-400 text-sm max-w-xl mx-auto">
-            How TrashChain transforms illegal dump sites into vibrant community spaces.
-          </p>
-        </div>
-
-        <div className="bg-neutral-900 border border-neutral-800 rounded-3xl p-6 md:p-8 space-y-6 shadow-2xl">
-          {/* Navigation Tabs */}
-          <div className="flex rounded-2xl bg-neutral-950 p-1.5 border border-neutral-800 max-w-md mx-auto">
-            {BEFORE_AFTER_DATA.map((item, idx) => (
-              <button
-                key={item.stage}
-                onClick={() => setActiveTab(idx)}
-                className={cn(
-                  "flex-1 py-2 text-xs font-mono font-bold rounded-xl transition-all",
-                  activeTab === idx ? "bg-neutral-800 text-white shadow-sm" : "text-neutral-500 hover:text-neutral-300"
-                )}
-              >
-                {item.stage}: {item.status.split(' ')[0]}
-              </button>
-            ))}
-          </div>
-
-          {/* Active Tab Preview */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
-            <div className="relative h-64 rounded-2xl overflow-hidden border border-neutral-800">
-              <img 
-                src={BEFORE_AFTER_DATA[activeTab].img} 
-                alt={BEFORE_AFTER_DATA[activeTab].status} 
-                className="w-full h-full object-cover" 
-              />
-              <div className="absolute top-3 left-3">
-                <span className={cn(
-                  "text-[10px] font-mono font-bold px-2.5 py-1 rounded-lg border",
-                  BEFORE_AFTER_DATA[activeTab].badgeColor
-                )}>
-                  {BEFORE_AFTER_DATA[activeTab].badge}
+            {/* Community Social Proof */}
+            <ScrollReveal variant="fade-up" delay={0.45}>
+              <div className="flex items-center gap-3 text-xs text-[#64748B] dark:text-[#94A3B8] font-mono pt-3 border-t border-[#E2E8F0] dark:border-[#1E2C24] max-w-md">
+                <div className="flex -space-x-2 overflow-hidden shrink-0">
+                  <div className="w-7 h-7 rounded-full bg-emerald-700 text-white flex items-center justify-center text-[10px] font-bold">JD</div>
+                  <div className="w-7 h-7 rounded-full bg-forest-700 text-white flex items-center justify-center text-[10px] font-bold">NP</div>
+                  <div className="w-7 h-7 rounded-full bg-purple-700 text-white flex items-center justify-center text-[10px] font-bold">AS</div>
+                </div>
+                <span>
+                  <strong className="text-[#0F172A] dark:text-white font-bold">2,847+ changemakers</strong> making our planet cleaner
                 </span>
+                <Badge variant="warning" className="text-[9px] font-mono">{isDemo ? 'DEMO DATA' : 'FIELD DATA'}</Badge>
               </div>
-            </div>
+            </ScrollReveal>
 
-            <div className="space-y-4">
+          </div>
+        </div>
+
+        {/* HERO BOTTOM: FLOATING STATISTICS CONTAINER (4 COLUMNS) */}
+        <div className="max-w-7xl mx-auto w-full relative z-10 pt-10">
+          <ScrollReveal variant="fade-up" delay={0.5}>
+            <div className="bg-white/90 dark:bg-[#121915]/90 backdrop-blur-md border border-[#E2E8F0] dark:border-[#1E2C24] rounded-2xl p-6 shadow-sm grid grid-cols-2 md:grid-cols-4 gap-6 font-mono text-left">
+              <div className="space-y-1 border-r border-[#E2E8F0] dark:border-[#1E2C24] pr-4 last:border-r-0">
+                <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 text-xs font-bold uppercase">
+                  <ShieldCheck className="w-4 h-4" /> Locations Cleaned
+                </div>
+                <div className="text-3xl font-black text-[#0F172A] dark:text-white">
+                  <ScoreReveal value={4} />
+                </div>
+                <p className="text-[11px] text-[#64748B] dark:text-[#94A3B8] font-sans">Verified clean sites</p>
+              </div>
+
+              <div className="space-y-1 border-r border-[#E2E8F0] dark:border-[#1E2C24] pr-4 last:border-r-0">
+                <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 text-xs font-bold uppercase">
+                  <Flame className="w-4 h-4" /> Waste Removed
+                </div>
+                <div className="text-3xl font-black text-[#0F172A] dark:text-white">
+                  <ScoreReveal value={340} suffix=" kg" />
+                </div>
+                <p className="text-[11px] text-[#64748B] dark:text-[#94A3B8] font-sans">Total debris diverted</p>
+              </div>
+
+              <div className="space-y-1 border-r border-[#E2E8F0] dark:border-[#1E2C24] pr-4 last:border-r-0">
+                <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 text-xs font-bold uppercase">
+                  <Target className="w-4 h-4" /> Missions
+                </div>
+                <div className="text-3xl font-black text-[#0F172A] dark:text-white">
+                  <ScoreReveal value={12} />
+                </div>
+                <p className="text-[11px] text-[#64748B] dark:text-[#94A3B8] font-sans">Organized field events</p>
+              </div>
+
               <div className="space-y-1">
-                <span className="text-xs font-mono font-bold text-fresh-400 uppercase tracking-widest">
-                  Stage {activeTab + 1} of 3
-                </span>
-                <h3 className="text-2xl font-bold text-white">{BEFORE_AFTER_DATA[activeTab].status}</h3>
+                <div className="flex items-center gap-2 text-purple-600 dark:text-purple-400 text-xs font-bold uppercase">
+                  <Users className="w-4 h-4" /> Active Volunteers
+                </div>
+                <div className="text-3xl font-black text-[#0F172A] dark:text-white">
+                  <ScoreReveal value={84} />
+                </div>
+                <p className="text-[11px] text-[#64748B] dark:text-[#94A3B8] font-sans">Registered citizens</p>
               </div>
 
-              <p className="text-sm text-neutral-300 leading-relaxed">
-                {BEFORE_AFTER_DATA[activeTab].desc}
+            </div>
+          </ScrollReveal>
+        </div>
+      </section>
+
+      {/* 3. SECTION 2 — "FROM PROBLEM TO POSSIBILITY" (6 CONNECTED PROCESS CARDS) */}
+      <section className="py-24 px-4 border-t border-[#E2E8F0] dark:border-[#1E2C24] bg-white dark:bg-[#121915] transition-colors duration-200">
+        <div className="max-w-7xl mx-auto text-center space-y-16">
+          <ScrollReveal variant="fade-up" className="space-y-3 max-w-2xl mx-auto">
+            <span className="text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest block">
+              HOW TRASHCHAIN WORKS
+            </span>
+            <h2 className="text-4xl sm:text-5xl font-black text-[#0F172A] dark:text-white font-display">
+              From Problem to{' '}
+              <span className="text-emerald-600 dark:text-emerald-400">Possibility</span>
+            </h2>
+            <p className="text-[#64748B] dark:text-[#94A3B8] text-base">
+              A simple 6-step journey from reporting to recovery
+            </p>
+          </ScrollReveal>
+
+          {/* SIX PROCESS CARDS */}
+          <StaggerContainer className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 text-left">
+            {JOURNEY_STEPS.map((stg) => {
+              const Icon = stg.icon;
+              return (
+                <StaggerItem key={stg.step}>
+                  <div className="bg-[#F6F8F5] dark:bg-[#0A0F0D] border border-[#E2E8F0] dark:border-[#1E2C24] rounded-2xl p-6 space-y-4 shadow-sm hover:border-emerald-500/40 transition-all group">
+                    <div className="flex items-center justify-between">
+                      <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center", stg.bg)}>
+                        <Icon className={cn("w-6 h-6", stg.color)} />
+                      </div>
+                      <span className="text-2xl font-black font-mono text-neutral-300 dark:text-neutral-700">{stg.step}</span>
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-[#0F172A] dark:text-white text-xl font-display">{stg.title}</h3>
+                      <p className="text-xs text-[#64748B] dark:text-[#94A3B8] mt-1 leading-relaxed font-sans">{stg.desc}</p>
+                    </div>
+                  </div>
+                </StaggerItem>
+              );
+            })}
+          </StaggerContainer>
+
+          {/* Centered CTA */}
+          <ScrollReveal variant="fade-up" className="pt-4">
+            <Button
+              size="lg"
+              onClick={() => navigate('/report')}
+              className="bg-[#15803D] hover:bg-[#166534] text-white font-bold py-3.5 px-8 text-base rounded-xl shadow-sm"
+            >
+              Start Your Journey <ArrowRight className="w-5 h-5 ml-2" />
+            </Button>
+          </ScrollReveal>
+
+        </div>
+      </section>
+
+      {/* 4. SECTION 3 — "BREAKING THE CYCLE OF REPEATED WASTE" (ABOUT SECTION) */}
+      <section id="about-section" className="py-24 px-4 border-t border-[#E2E8F0] dark:border-[#1E2C24] bg-[#F6F8F5] dark:bg-[#0A0F0D] transition-colors duration-200">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+
+          {/* LEFT: Large Environmental Visual */}
+          <div className="lg:col-span-6">
+            <ScrollReveal variant="slide-right">
+              <div className="relative h-96 sm:h-[440px] rounded-2xl overflow-hidden border border-[#E2E8F0] dark:border-[#1E2C24] shadow-sm">
+                <img
+                  src="https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&q=80&w=1200"
+                  alt="Environmental Recovery Transformation"
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0A0F0D]/70 via-transparent to-transparent" />
+                <div className="absolute bottom-6 left-6 right-6 p-4 bg-white/90 dark:bg-[#121915]/90 backdrop-blur-md rounded-xl border border-[#E2E8F0] dark:border-[#1E2C24] text-[#0F172A] dark:text-white font-mono text-xs flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                    <span>Verified Transformation</span>
+                  </div>
+                  <Badge variant="warning" className="text-[9px] font-mono">{isDemo ? 'DEMO DATA' : 'FIELD DATA'}</Badge>
+                </div>
+              </div>
+            </ScrollReveal>
+          </div>
+
+          {/* RIGHT: Content */}
+          <div className="lg:col-span-6 space-y-6 text-left">
+            <ScrollReveal variant="fade-up">
+              <Badge variant="success" className="bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 border-emerald-500/30 text-xs font-mono">
+                BREAKING THE REPEATED DUMPING CYCLE
+              </Badge>
+              <h2 className="text-3xl sm:text-5xl font-black text-[#0F172A] dark:text-white font-display mt-2 leading-tight">
+                Breaking the Cycle of<br />
+                <span className="text-emerald-600 dark:text-emerald-400">Repeated Waste</span>
+              </h2>
+            </ScrollReveal>
+
+            <ScrollReveal variant="fade-up" delay={0.1}>
+              <p className="text-[#64748B] dark:text-[#94A3B8] text-base leading-relaxed font-sans">
+                People clean a polluted area. After some time, trash is dumped there again. TrashChain is built to break this endless cycle through AI planning, community action, and post-cleanup surveillance monitoring.
               </p>
+            </ScrollReveal>
 
-              <div className="p-3 bg-neutral-950 rounded-xl border border-neutral-850 font-mono text-xs text-neutral-300">
-                <span className="text-neutral-500 block text-[10px] uppercase">Key Metric</span>
-                <span className="font-bold text-white text-base">{BEFORE_AFTER_DATA[activeTab].stats}</span>
+            <ScrollReveal variant="fade-up" delay={0.2}>
+              <div className="space-y-3 font-sans text-sm text-[#0F172A] dark:text-neutral-200">
+                <div className="flex items-center gap-3">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <span>Multimodal Gemini AI for waste assessment</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <span>OpenAI Recovery Planner for step-by-step cleanup guides</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <span>Community volunteer mobilization and mission tracking</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <span>Biweekly surveillance monitoring to prevent repeat dumping</span>
+                </div>
+              </div>
+            </ScrollReveal>
+
+            <ScrollReveal variant="fade-up" delay={0.3}>
+              <Button
+                onClick={() => navigate('/about')}
+                className="bg-[#15803D] hover:bg-[#166534] text-white font-bold py-3 px-6 text-sm rounded-xl shadow-sm"
+              >
+                Learn More About TrashChain <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+            </ScrollReveal>
+          </div>
+
+        </div>
+      </section>
+
+      {/* 5. SECTION 4 — DARK AI ENVIRONMENTAL-TECH SECTION */}
+      <section className="py-24 px-4 border-t border-[#E2E8F0] dark:border-[#1E2C24] bg-white dark:bg-[#121915] transition-colors duration-200">
+        <div className="max-w-7xl mx-auto space-y-16">
+          <ScrollReveal variant="fade-up" className="text-center space-y-3 max-w-2xl mx-auto">
+            <Badge variant="purple" className="text-xs font-mono">
+              AI RECOVERY INTELLIGENCE
+            </Badge>
+            <h2 className="text-3xl sm:text-4xl font-black font-display text-[#0F172A] dark:text-white">
+              AI That Turns Evidence Into Action
+            </h2>
+            <p className="text-[#64748B] dark:text-[#94A3B8] text-sm sm:text-base font-sans">
+              Two specialized AI layers working together to analyze waste photos and formulate clear recovery steps.
+            </p>
+          </ScrollReveal>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 font-mono">
+            {/* Gemini Vision Layer */}
+            <ScrollReveal variant="slide-right">
+              <div className="p-8 bg-[#F6F8F5] dark:bg-[#0A0F0D] border border-purple-500/30 rounded-2xl space-y-4 shadow-sm h-full">
+                <div className="w-12 h-12 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center border border-purple-500/20">
+                  <Sparkles className="w-6 h-6" />
+                </div>
+                <div>
+                  <span className="text-xs text-purple-600 dark:text-purple-400 font-bold uppercase tracking-wider block">GEMINI VISION ANALYSIS</span>
+                  <h3 className="text-2xl font-bold text-[#0F172A] dark:text-white mt-1">"What did I find?"</h3>
+                </div>
+                <p className="text-xs text-[#64748B] dark:text-[#94A3B8] font-sans leading-relaxed">
+                  Scans evidence photos to identify waste categories (plastic, hazardous, municipal), estimates volume, and identifies immediate risk factors.
+                </p>
+                <div className="p-3 bg-white dark:bg-[#121915] rounded-xl border border-[#E2E8F0] dark:border-[#1E2C24] text-[11px] text-purple-700 dark:text-purple-300">
+                  ✓ Multimodal Vision Assessment • Instant Risk Rating
+                </div>
+              </div>
+            </ScrollReveal>
+
+            {/* OpenAI Planner Layer */}
+            <ScrollReveal variant="slide-left">
+              <div className="p-8 bg-[#F6F8F5] dark:bg-[#0A0F0D] border border-indigo-500/30 rounded-2xl space-y-4 shadow-sm h-full">
+                <div className="w-12 h-12 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center border border-indigo-500/20">
+                  <Brain className="w-6 h-6" />
+                </div>
+                <div>
+                  <span className="text-xs text-indigo-600 dark:text-indigo-400 font-bold uppercase tracking-wider block">OPENAI RECOVERY PLANNER</span>
+                  <h3 className="text-2xl font-bold text-[#0F172A] dark:text-white mt-1">"What should I do next?"</h3>
+                </div>
+                <p className="text-xs text-[#64748B] dark:text-[#94A3B8] font-sans leading-relaxed">
+                  Generates customized step-by-step cleanup guides, equipment lists, volunteer recommendations, safety rules, and long-term site barrier ideas.
+                </p>
+                <div className="p-3 bg-white dark:bg-[#121915] rounded-xl border border-[#E2E8F0] dark:border-[#1E2C24] text-[11px] text-indigo-700 dark:text-indigo-300">
+                  ✓ Action Plan Generation • Prevention Recommendations
+                </div>
+              </div>
+            </ScrollReveal>
+          </div>
+
+        </div>
+      </section>
+
+      {/* 6. SECTION 5 — RECOVERY PROOF COMPARISON */}
+      <section className="py-24 px-4 border-t border-[#E2E8F0] dark:border-[#1E2C24] bg-[#F6F8F5] dark:bg-[#0A0F0D] transition-colors duration-200">
+        <div className="max-w-6xl mx-auto">
+          <ScrollReveal variant="fade-up" className="text-center space-y-3 mb-12">
+            <Badge variant="success" className="bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 border-emerald-500/30 font-mono text-xs">
+              FIELD STAGE PROGRESSION
+            </Badge>
+            <h2 className="text-3xl sm:text-4xl font-black font-display text-[#0F172A] dark:text-white">Track the Transformation</h2>
+            <p className="text-[#64748B] dark:text-[#94A3B8] text-sm max-w-xl mx-auto">
+              Real site data showing how reported hotspots move from pollution to community transformation.
+            </p>
+          </ScrollReveal>
+
+          <div className="bg-white dark:bg-[#121915] border border-[#E2E8F0] dark:border-[#1E2C24] rounded-2xl p-6 md:p-8 space-y-6 shadow-sm">
+            {/* Tabs */}
+            <div className="flex rounded-xl bg-[#F6F8F5] dark:bg-[#0A0F0D] p-1.5 border border-[#E2E8F0] dark:border-[#1E2C24] max-w-md mx-auto">
+              {BEFORE_AFTER_DATA.map((item, idx) => (
+                <button
+                  key={item.stage}
+                  onClick={() => setActiveTab(idx)}
+                  className={cn(
+                    "flex-1 py-2 text-xs font-mono font-bold rounded-lg transition-all cursor-pointer",
+                    activeTab === idx ? "bg-white dark:bg-[#121915] text-[#0F172A] dark:text-white shadow-sm" : "text-[#64748B] dark:text-[#94A3B8] hover:text-[#0F172A] dark:hover:text-white"
+                  )}
+                >
+                  {item.stage}: {item.status.split(' ')[0]}
+                </button>
+              ))}
+            </div>
+
+            {/* Active Tab Preview */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+              <div className="relative h-64 rounded-xl overflow-hidden border border-[#E2E8F0] dark:border-[#1E2C24]">
+                <img
+                  src={BEFORE_AFTER_DATA[activeTab].img}
+                  alt={BEFORE_AFTER_DATA[activeTab].status}
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute top-3 left-3">
+                  <span className={cn(
+                    "text-[10px] font-mono font-bold px-2.5 py-1 rounded-md border",
+                    BEFORE_AFTER_DATA[activeTab].badgeColor
+                  )}>
+                    {BEFORE_AFTER_DATA[activeTab].badge}
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-4 text-left font-mono">
+                <div className="space-y-1">
+                  <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">
+                    Stage {activeTab + 1} of 3
+                  </span>
+                  <h3 className="text-2xl font-bold text-[#0F172A] dark:text-white font-sans">{BEFORE_AFTER_DATA[activeTab].status}</h3>
+                </div>
+
+                <p className="text-xs text-[#64748B] dark:text-[#94A3B8] leading-relaxed font-sans">
+                  {BEFORE_AFTER_DATA[activeTab].desc}
+                </p>
+
+                <div className="p-3 bg-[#F6F8F5] dark:bg-[#0A0F0D] rounded-xl border border-[#E2E8F0] dark:border-[#1E2C24] text-xs">
+                  <span className="text-[#64748B] dark:text-[#94A3B8] block text-[10px] uppercase">Key Metric</span>
+                  <span className="font-bold text-[#0F172A] dark:text-white text-base">{BEFORE_AFTER_DATA[activeTab].stats}</span>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* 5. ENVIRONMENTAL IMPACT METRICS */}
-      <section className="py-20 px-4 max-w-6xl mx-auto border-b border-neutral-850">
-        <div className="text-center space-y-3 mb-12">
-          <Badge variant="success" className="bg-fresh-500/10 text-fresh-400 border-fresh-500/30">
-            Impact Intelligence
-          </Badge>
-          <h2 className="text-3xl sm:text-4xl font-black text-white">Measure the Recovery</h2>
-          <p className="text-neutral-400 text-sm max-w-xl mx-auto">
-            Transparent metrics tracking community effort and environmental progress.
+      {/* 7. SECTION 6 — FINAL CINEMATIC CTA */}
+      <section className="py-24 px-4 max-w-4xl mx-auto text-center space-y-6 relative">
+        <ScrollReveal variant="fade-up">
+          <h2 className="text-4xl sm:text-6xl font-black text-[#0F172A] dark:text-white leading-tight font-display">
+            Don't Just Clean It.<br />
+            <span className="text-emerald-600 dark:text-emerald-400">Transform It.</span>
+          </h2>
+          <p className="text-[#64748B] dark:text-[#94A3B8] text-base max-w-lg mx-auto pt-2">
+            Choose a polluted place. Start a recovery. Help give it a better future.
           </p>
-        </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
-          <Card className="bg-neutral-900 border-neutral-800 text-white p-6 space-y-2">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs text-neutral-400 font-mono uppercase">Locations Recovered</span>
-              {isDemo ? (
-                <Badge variant="warning" className="bg-amber-500/20 text-amber-300 border-amber-500/30 text-[10px]">DEMO DATA</Badge>
-              ) : (
-                <ImpactBadge type="VERIFIED" size="sm" />
-              )}
-            </div>
-            <div className="text-3xl sm:text-4xl font-black font-mono text-fresh-400">
-              <ScoreReveal value={4} />
-            </div>
-            <p className="text-[11px] text-neutral-500">Verified clean sites</p>
-          </Card>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-6">
+            <Button
+              size="lg"
+              onClick={() => navigate('/report')}
+              className="w-full sm:w-auto bg-[#15803D] hover:bg-[#166534] text-white font-bold py-3.5 px-8 text-base rounded-xl shadow-sm"
+            >
+              Start Your Journey <ArrowRight className="w-5 h-5 ml-2" />
+            </Button>
 
-          <Card className="bg-neutral-900 border-neutral-800 text-white p-6 space-y-2">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs text-neutral-400 font-mono uppercase">Waste Removed</span>
-              {isDemo ? (
-                <Badge variant="warning" className="bg-amber-500/20 text-amber-300 border-amber-500/30 text-[10px]">DEMO DATA</Badge>
-              ) : (
-                <ImpactBadge type="MEASURED" size="sm" />
-              )}
-            </div>
-            <div className="text-3xl sm:text-4xl font-black font-mono text-fresh-400">
-              <ScoreReveal value={340} suffix=" kg" />
-            </div>
-            <p className="text-[11px] text-neutral-500">Total debris diverted</p>
-          </Card>
-
-          <Card className="bg-neutral-900 border-neutral-800 text-white p-6 space-y-2">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs text-neutral-400 font-mono uppercase">Cleanup Missions</span>
-              {isDemo ? (
-                <Badge variant="warning" className="bg-amber-500/20 text-amber-300 border-amber-500/30 text-[10px]">DEMO DATA</Badge>
-              ) : (
-                <ImpactBadge type="USER-REPORTED" size="sm" />
-              )}
-            </div>
-            <div className="text-3xl sm:text-4xl font-black font-mono text-amber-400">
-              <ScoreReveal value={12} />
-            </div>
-            <p className="text-[11px] text-neutral-500">Organized field events</p>
-          </Card>
-
-          <Card className="bg-neutral-900 border-neutral-800 text-white p-6 space-y-2">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs text-neutral-400 font-mono uppercase">Volunteers</span>
-              {isDemo ? (
-                <Badge variant="warning" className="bg-amber-500/20 text-amber-300 border-amber-500/30 text-[10px]">DEMO DATA</Badge>
-              ) : (
-                <ImpactBadge type="USER-REPORTED" size="sm" />
-              )}
-            </div>
-            <div className="text-3xl sm:text-4xl font-black font-mono text-purple-400">
-              <ScoreReveal value={84} />
-            </div>
-            <p className="text-[11px] text-neutral-500">Active community members</p>
-          </Card>
-        </div>
-      </section>
-
-      {/* 6. AI PREVENTION SECTION */}
-      <section className="py-20 px-4 max-w-5xl mx-auto border-b border-neutral-850">
-        <div className="text-center space-y-3 mb-12">
-          <Badge variant="outline" className="border-purple-500/40 text-purple-300 bg-purple-500/10">
-            AI-Assisted Prevention
-          </Badge>
-          <h2 className="text-3xl sm:text-4xl font-black text-white">Cleaning Is Only the Beginning.</h2>
-          <p className="text-neutral-400 text-sm max-w-xl mx-auto">
-            TrashChain uses AI analysis to help communities decide what a recovered place should become — and how to reduce the chance of dumping returning.
-          </p>
-        </div>
-
-        {/* Live AI Recommendation Preview Box */}
-        <div className="bg-gradient-to-br from-neutral-900 via-neutral-950 to-purple-950/40 border border-purple-500/30 rounded-3xl p-6 sm:p-8 space-y-6 shadow-2xl mb-8">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-neutral-800 pb-4">
-            <div>
-              <span className="text-xs font-mono font-bold text-purple-400 uppercase">AI Prevention Recommendation</span>
-              <h3 className="text-xl font-bold text-white mt-0.5">Pine Street Lot Transformation</h3>
-            </div>
-            <ImpactBadge type="PROJECTED" size="sm" />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 font-mono">
-            <div className="p-4 bg-neutral-900/80 rounded-2xl border border-neutral-800">
-              <span className="text-[10px] text-neutral-500 uppercase block">Recurrence Risk</span>
-              <span className="text-2xl font-black text-coral-400">78%</span>
-              <span className="text-[10px] text-neutral-400 block mt-1">High risk of repeat dumping</span>
-            </div>
-            <div className="p-4 bg-neutral-900/80 rounded-2xl border border-neutral-800">
-              <span className="text-[10px] text-neutral-500 uppercase block">AI Recommendation</span>
-              <span className="text-lg font-bold text-purple-300 block">Community Mini Garden</span>
-              <span className="text-[10px] text-neutral-400 block mt-1">Raised planter barriers</span>
-            </div>
-            <div className="p-4 bg-neutral-900/80 rounded-2xl border border-neutral-800">
-              <span className="text-[10px] text-neutral-500 uppercase block">Projected dumping reduction</span>
-              <span className="text-2xl font-black text-fresh-400">65%</span>
-              <span className="text-[10px] text-neutral-400 block mt-1">Econometric estimate</span>
-            </div>
-          </div>
-        </div>
-
-        {/* 3 Recommendation Options */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {PREVENTION_IDEAS.map((idea) => (
-            <div key={idea.title} className="p-6 bg-neutral-900 border border-neutral-800 rounded-2xl space-y-3 hover:border-purple-500/50 transition-colors">
-              <div className="text-3xl">{idea.icon}</div>
-              <h4 className="font-bold text-white text-base">{idea.title}</h4>
-              <p className="text-xs text-neutral-400 leading-relaxed font-sans">{idea.desc}</p>
-              <div className="pt-2">
-                <span className="text-[10px] font-mono font-bold text-purple-300 bg-purple-500/10 px-2.5 py-1 rounded-full border border-purple-500/30">
-                  Projected: {idea.risk}
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* 7. LIVE SATELLITE EXPERIENCE PREVIEW */}
-      <section className="py-20 px-4 max-w-5xl mx-auto border-b border-neutral-850 text-center space-y-8">
-        <div className="space-y-3">
-          <Badge variant="success" className="bg-fresh-500/10 text-fresh-400 border-fresh-500/30">
-            Real Geospatial Intelligence
-          </Badge>
-          <h2 className="text-3xl sm:text-4xl font-black text-white">Explore the Recovery Map</h2>
-          <p className="text-neutral-400 text-sm max-w-xl mx-auto">
-            Interact with live satellite imagery tracking active hotspots, cleanup missions, and transformed sites.
-          </p>
-        </div>
-
-        <div className="bg-neutral-900 border border-neutral-800 rounded-3xl p-4 shadow-2xl relative">
-          <div className="h-72 rounded-2xl bg-neutral-950 border border-neutral-800 relative overflow-hidden flex flex-col items-center justify-center p-6 space-y-4">
-            <div className="absolute inset-0 opacity-20 pointer-events-none bg-[radial-gradient(#34d399_1px,transparent_1px)] [background-size:16px_16px]" />
-            <Globe2 className="w-12 h-12 text-fresh-400 animate-pulse" />
-            <h3 className="text-xl font-bold text-white">Interactive Satellite Map</h3>
-            <div className="flex flex-wrap justify-center gap-3 text-xs font-mono">
-              <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-coral-500"></span> Active Critical</span>
-              <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-amber-500"></span> Reported</span>
-              <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-yellow-500"></span> Mission</span>
-              <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-fresh-500"></span> Recovered</span>
-            </div>
-            <Button onClick={() => navigate('/explore')} className="bg-forest-600 hover:bg-forest-700 text-white font-bold text-xs px-6 py-3">
-              Open Recovery Map <ArrowUpRight className="w-4 h-4 ml-1" />
+            <Button
+              variant="outline"
+              size="lg"
+              onClick={() => navigate('/explore')}
+              className="w-full sm:w-auto border-[#E2E8F0] dark:border-[#1E2C24] bg-white dark:bg-[#121915] text-[#0F172A] dark:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800 font-bold py-3.5 px-8 text-base rounded-xl"
+            >
+              Explore the Map
             </Button>
           </div>
-        </div>
+        </ScrollReveal>
       </section>
 
-      {/* 8. COMMUNITY SECTION */}
-      <section className="py-20 px-4 max-w-5xl mx-auto border-b border-neutral-850 text-center space-y-8">
-        <div className="space-y-3">
-          <Badge variant="outline" className="border-neutral-700 text-neutral-300">
-            Community Ecosystem
-          </Badge>
-          <h2 className="text-3xl sm:text-4xl font-black text-white">
-            Built by People Who Refuse to Walk Past the Problem.
-          </h2>
-          <p className="text-neutral-400 text-sm max-w-xl mx-auto">
-            Citizens, students, NSS units, community groups, and local NGOs collaborating on field recovery.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-2 md:grid-cols-6 gap-3 font-mono text-xs">
-          {['Citizens', 'Students', 'NSS Units', 'Community Groups', 'Local NGOs', 'Organizations'].map((cat) => (
-            <div key={cat} className="p-3 bg-neutral-900 border border-neutral-800 rounded-xl text-neutral-300 font-bold">
-              {cat}
-            </div>
-          ))}
-        </div>
-
-        <div className="bg-neutral-900 border border-neutral-800 p-6 rounded-3xl max-w-2xl mx-auto text-left space-y-2">
-          <span className="text-[10px] font-mono font-bold text-amber-400 uppercase">Community Pilot Story</span>
-          <h4 className="font-bold text-white text-base">Pine Street Lot Recovery Chain</h4>
-          <p className="text-xs text-neutral-300 leading-relaxed font-sans">
-            "Before TrashChain, this corner was an illegal dumping site for over two years. Reporting it and holding a volunteer cleanup transformed it into a space residents actually maintain."
-          </p>
-        </div>
-      </section>
-
-      {/* 9. FINAL CTA SECTION */}
-      <section className="py-24 px-4 max-w-4xl mx-auto text-center space-y-8">
-        <h2 className="text-4xl sm:text-6xl font-black text-white leading-tight">
-          Your Street.<br />
-          Your Community.<br />
-          <span className="text-fresh-400">Your Chain.</span>
-        </h2>
-        <p className="text-neutral-300 text-base max-w-lg mx-auto">
-          Choose a polluted place. Start a recovery. Help give it a better future.
-        </p>
-
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-          <Button 
-            size="lg" 
-            onClick={() => navigate('/report')}
-            className="w-full sm:w-auto bg-forest-600 hover:bg-forest-700 text-white font-bold py-4 px-8 text-base shadow-xl"
-          >
-            Start Recovering a Space <ArrowRight className="w-5 h-5 ml-2" />
-          </Button>
-
-          <Button 
-            variant="outline" 
-            size="lg"
-            onClick={() => navigate('/explore')}
-            className="w-full sm:w-auto border-neutral-700 bg-neutral-900 hover:bg-neutral-850 text-white font-bold py-4 px-8 text-base"
-          >
-            Explore the Map
-          </Button>
-        </div>
-      </section>
-
-      {/* 10. FOOTER */}
-      <footer className="bg-neutral-950 border-t border-neutral-850 py-12 px-4 text-neutral-500 text-xs">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
+      {/* 8. FOOTER & CREATOR ATTRIBUTION (Nirmala Devi Patel) */}
+      <footer className="bg-white dark:bg-[#121915] border-t border-[#E2E8F0] dark:border-[#1E2C24] py-12 px-4 text-[#64748B] dark:text-[#94A3B8] text-xs font-mono">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="space-y-1 text-center md:text-left">
-            <div className="flex items-center justify-center md:justify-start gap-2 text-white font-bold text-base">
-              <TreePine className="w-5 h-5 text-fresh-400" /> TrashChain
+            <div className="flex items-center justify-center md:justify-start gap-2 text-[#0F172A] dark:text-white font-bold text-base">
+              <TreePine className="w-5 h-5 text-emerald-600 dark:text-emerald-400" /> TrashChain
             </div>
-            <p className="text-neutral-400 text-[11px]">Transforming polluted spaces into verified community recoveries.</p>
+            <p className="text-[#64748B] dark:text-[#94A3B8] text-[11px] font-sans">Transforming polluted spaces into verified community recoveries.</p>
           </div>
 
-          <div className="flex flex-wrap justify-center gap-6 font-semibold text-neutral-300">
-            <Link to="/explore" className="hover:text-white transition-colors">Explore</Link>
-            <Link to="/report" className="hover:text-white transition-colors">Report</Link>
-            <Link to="/missions" className="hover:text-white transition-colors">Missions</Link>
-            <Link to="/monitoring" className="hover:text-white transition-colors">Surveillance</Link>
-            <Link to="/timeline" className="hover:text-white transition-colors">Timeline</Link>
-            <Link to="/leaderboard" className="hover:text-white transition-colors">Leaderboard</Link>
+          <div className="flex flex-wrap justify-center gap-6 font-semibold text-[#0F172A] dark:text-white">
+            <Link to="/explore" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">Explore</Link>
+            <Link to="/report" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">Report</Link>
+            <Link to="/missions" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">Missions</Link>
+            <Link to="/timeline" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">Timeline</Link>
+            <Link to="/leaderboard" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">Leaderboard</Link>
+            <Link to="/about" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">About</Link>
           </div>
 
-          <div className="text-neutral-500 font-mono text-[11px] text-center md:text-right space-y-1">
-            <div>Created by <span className="font-bold text-neutral-300">Nirmala Devi Patel</span></div>
+          <div className="text-[#64748B] dark:text-[#94A3B8] text-center md:text-right space-y-1">
+            <div>Created by <span className="font-bold text-[#0F172A] dark:text-white">Nirmala Devi Patel</span></div>
             <div className="flex items-center justify-center md:justify-end gap-3 text-[10px]">
               <a
                 href="https://www.linkedin.com/in/nirmaladevipatel2005/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-blue-400 hover:underline font-bold"
+                className="text-blue-600 dark:text-blue-400 hover:underline font-bold"
               >
                 LinkedIn
               </a>
@@ -679,7 +768,7 @@ export default function Landing() {
                 href="https://github.com/nirmaladevi2005"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-neutral-400 hover:underline font-bold"
+                className="text-[#0F172A] dark:text-white hover:underline font-bold"
               >
                 GitHub
               </a>

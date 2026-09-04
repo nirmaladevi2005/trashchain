@@ -64,7 +64,7 @@ export default function Dashboard() {
 
   return (
     <motion.div 
-      className="p-4 md:p-8 max-w-7xl mx-auto space-y-10 bg-neutral-50 dark:bg-neutral-950 text-neutral-900 dark:text-neutral-100 min-h-screen font-sans transition-colors duration-200"
+      className="p-4 sm:p-6 md:p-8 max-w-7xl mx-auto space-y-8 bg-[#F6F8F5] dark:bg-[#0A0F0D] text-[#0F172A] dark:text-[#F8FAFC] min-h-screen font-sans transition-colors duration-200"
       variants={containerVariants}
       initial="hidden"
       animate="show"
@@ -73,9 +73,9 @@ export default function Dashboard() {
       {/* 1. HERO / ENVIRONMENTAL IMPACT HEADER */}
       <motion.section 
         variants={itemVariants} 
-        className="relative bg-gradient-to-br from-neutral-900 via-neutral-950 to-forest-950/40 p-6 md:p-8 rounded-3xl border border-neutral-850 shadow-2xl overflow-hidden"
+        className="relative bg-gradient-to-br from-emerald-950 via-forest-950 to-[#0A0F0D] p-6 md:p-8 rounded-3xl border border-[#E2E8F0] dark:border-[#1E2C24] text-white shadow-sm overflow-hidden"
       >
-        <div className="absolute top-0 right-0 w-96 h-96 bg-forest-600/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
         
         <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
           <div className="space-y-2">
@@ -83,13 +83,13 @@ export default function Dashboard() {
               <Badge variant="warning" className="bg-amber-500/20 text-amber-300 border-amber-500/30 text-[10px] font-mono">
                 {dataSource}
               </Badge>
-              <span className="text-xs font-mono text-neutral-400">ENVIRONMENTAL COMMAND CENTER</span>
+              <span className="text-xs font-mono text-neutral-300">ENVIRONMENTAL COMMAND CENTER</span>
             </div>
 
-            <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-white tracking-tight">
-              Good day, <span className="text-fresh-400">{firstName}</span>
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-white tracking-tight font-display">
+              Good day, <span className="text-emerald-400">{firstName}</span>
             </h1>
-            <p className="text-sm sm:text-base text-neutral-300 max-w-xl font-sans leading-relaxed">
+            <p className="text-sm sm:text-base text-neutral-200 max-w-xl font-sans leading-relaxed">
               Let's recover another place today. Every reported hotspot and completed mission protects community health.
             </p>
 
@@ -97,7 +97,7 @@ export default function Dashboard() {
               <Button 
                 size="md" 
                 onClick={() => navigate('/report')}
-                className="bg-forest-600 hover:bg-forest-700 text-white font-bold px-6 py-3 shadow-lg shadow-forest-600/25"
+                className="bg-[#15803D] hover:bg-[#166534] text-white font-bold px-6 py-3 rounded-xl shadow-sm"
               >
                 Start a Recovery <ArrowRight className="w-4 h-4 ml-1.5" />
               </Button>
@@ -105,18 +105,18 @@ export default function Dashboard() {
                 variant="outline" 
                 size="md" 
                 onClick={() => navigate('/explore')}
-                className="border-neutral-700 bg-neutral-900 text-white hover:bg-neutral-850 font-bold px-6 py-3"
+                className="border-white/30 bg-white/10 text-white hover:bg-white/20 font-bold px-6 py-3 rounded-xl"
               >
-                Explore Hotspots <Compass className="w-4 h-4 ml-1.5 text-fresh-400" />
+                Explore Hotspots <Compass className="w-4 h-4 ml-1.5 text-emerald-400" />
               </Button>
             </div>
           </div>
 
           {/* Environmental Impact Score Card */}
-          <div className="bg-neutral-900/90 border border-neutral-800 p-5 sm:p-6 rounded-2xl shrink-0 space-y-3 min-w-[260px] shadow-xl">
+          <div className="bg-white/10 dark:bg-[#121915]/90 backdrop-blur-md border border-white/20 dark:border-[#1E2C24] p-5 sm:p-6 rounded-2xl shrink-0 space-y-3 min-w-[240px] shadow-sm">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-mono font-bold text-neutral-400 uppercase">Impact Score</span>
-              <div className="w-8 h-8 rounded-full bg-fresh-500/20 text-fresh-400 flex items-center justify-center border border-fresh-400/30">
+              <span className="text-xs font-mono font-bold text-neutral-300 uppercase">Impact Score</span>
+              <div className="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center border border-emerald-400/30">
                 <Leaf className="w-4 h-4" />
               </div>
             </div>
@@ -125,11 +125,11 @@ export default function Dashboard() {
                 <ScoreReveal value={impactScore} />
                 <span className="text-xs font-sans text-emerald-400 font-bold">+12 this month</span>
               </div>
-              <p className="text-[11px] text-neutral-400 mt-1">Verified field impact points</p>
+              <p className="text-[11px] text-neutral-300 mt-1">Verified field impact points</p>
             </div>
-            <div className="pt-2 border-t border-neutral-800 flex items-center justify-between text-[10px] font-mono text-neutral-400">
+            <div className="pt-2 border-t border-white/20 dark:border-[#1E2C24] flex items-center justify-between text-[10px] font-mono text-neutral-300">
               <span>SOURCE:</span>
-              <span className="text-fresh-400 font-bold">{dataSource}</span>
+              <span className="text-emerald-400 font-bold">{dataSource}</span>
             </div>
           </div>
         </div>
@@ -138,63 +138,63 @@ export default function Dashboard() {
       {/* 2. IMPACT OVERVIEW (4 DISTINCT METRICS) */}
       <motion.section variants={itemVariants} className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold text-white flex items-center gap-2">
-            <Activity className="w-5 h-5 text-fresh-400" /> Impact Overview
+          <h2 className="text-lg font-bold text-[#0F172A] dark:text-white flex items-center gap-2 font-display">
+            <Activity className="w-5 h-5 text-emerald-600 dark:text-emerald-400" /> Impact Overview
           </h2>
-          <span className="text-xs font-mono text-neutral-400">Strict Data Segregation</span>
+          <span className="text-xs font-mono text-[#64748B] dark:text-[#94A3B8]">Strict Data Segregation</span>
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card className="bg-neutral-900 border-neutral-800 text-white p-5 flex flex-col justify-between hover:border-amber-500/50 transition-colors">
+          <Card className="bg-white dark:bg-[#121915] border-[#E2E8F0] dark:border-[#1E2C24] text-[#0F172A] dark:text-white p-5 flex flex-col justify-between hover:border-amber-500/50 transition-colors shadow-sm">
             <div className="flex items-center justify-between mb-3">
-              <MapPin className="w-5 h-5 text-amber-400" />
+              <MapPin className="w-5 h-5 text-amber-500" />
               <ImpactBadge type="USER-REPORTED" size="sm" showIcon={false} />
             </div>
             <div>
-              <div className="text-3xl font-black font-mono text-white">
+              <div className="text-3xl font-black font-mono text-[#0F172A] dark:text-white">
                 <ScoreReveal value={user?.hotspotsReported ?? mockUser.hotspotsReported} />
               </div>
-              <p className="text-xs font-medium text-neutral-400 mt-0.5">Hotspots Reported</p>
+              <p className="text-xs font-medium text-[#64748B] dark:text-[#94A3B8] mt-0.5">Hotspots Reported</p>
             </div>
           </Card>
 
-          <Card className="bg-neutral-900 border-neutral-800 text-white p-5 flex flex-col justify-between hover:border-yellow-500/50 transition-colors">
+          <Card className="bg-white dark:bg-[#121915] border-[#E2E8F0] dark:border-[#1E2C24] text-[#0F172A] dark:text-white p-5 flex flex-col justify-between hover:border-yellow-500/50 transition-colors shadow-sm">
             <div className="flex items-center justify-between mb-3">
-              <Target className="w-5 h-5 text-yellow-400" />
+              <Target className="w-5 h-5 text-yellow-500" />
               <ImpactBadge type="USER-REPORTED" size="sm" showIcon={false} />
             </div>
             <div>
-              <div className="text-3xl font-black font-mono text-white">
+              <div className="text-3xl font-black font-mono text-[#0F172A] dark:text-white">
                 <ScoreReveal value={user?.missionsCompleted ?? mockUser.missionsCompleted} />
               </div>
-              <p className="text-xs font-medium text-neutral-400 mt-0.5">Cleanup Missions</p>
+              <p className="text-xs font-medium text-[#64748B] dark:text-[#94A3B8] mt-0.5">Cleanup Missions</p>
             </div>
           </Card>
 
-          <Card className="bg-neutral-900 border-neutral-800 text-white p-5 flex flex-col justify-between hover:border-fresh-500/50 transition-colors">
+          <Card className="bg-white dark:bg-[#121915] border-[#E2E8F0] dark:border-[#1E2C24] text-[#0F172A] dark:text-white p-5 flex flex-col justify-between hover:border-emerald-500/50 transition-colors shadow-sm">
             <div className="flex items-center justify-between mb-3">
-              <ShieldCheck className="w-5 h-5 text-fresh-400" />
+              <ShieldCheck className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
               <ImpactBadge type="ESTIMATED" size="sm" showIcon={false} />
             </div>
             <div>
-              <div className="text-3xl font-black font-mono text-fresh-400 flex items-baseline gap-1">
+              <div className="text-3xl font-black font-mono text-emerald-600 dark:text-emerald-400 flex items-baseline gap-1">
                 <ScoreReveal value={user?.wasteRemovedKg ?? mockUser.wasteRemovedKg} />
-                <span className="text-sm font-sans text-neutral-400 font-normal">kg</span>
+                <span className="text-sm font-sans text-[#64748B] dark:text-[#94A3B8] font-normal">kg</span>
               </div>
-              <p className="text-xs font-medium text-neutral-400 mt-0.5">Waste Removed</p>
+              <p className="text-xs font-medium text-[#64748B] dark:text-[#94A3B8] mt-0.5">Waste Removed</p>
             </div>
           </Card>
 
-          <Card className="bg-neutral-900 border-neutral-800 text-white p-5 flex flex-col justify-between hover:border-emerald-500/50 transition-colors">
+          <Card className="bg-white dark:bg-[#121915] border-[#E2E8F0] dark:border-[#1E2C24] text-[#0F172A] dark:text-white p-5 flex flex-col justify-between hover:border-emerald-500/50 transition-colors shadow-sm">
             <div className="flex items-center justify-between mb-3">
-              <Leaf className="w-5 h-5 text-emerald-400" />
+              <Leaf className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
               <ImpactBadge type="VERIFIED" size="sm" showIcon={false} />
             </div>
             <div>
-              <div className="text-3xl font-black font-mono text-emerald-400">
+              <div className="text-3xl font-black font-mono text-emerald-600 dark:text-emerald-400">
                 <ScoreReveal value={user?.locationsRecovered ?? mockUser.locationsRecovered} />
               </div>
-              <p className="text-xs font-medium text-neutral-400 mt-0.5">Locations Recovered</p>
+              <p className="text-xs font-medium text-[#64748B] dark:text-[#94A3B8] mt-0.5">Locations Recovered</p>
             </div>
           </Card>
         </div>
