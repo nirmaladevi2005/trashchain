@@ -5,12 +5,14 @@ import {
   Plus, MapPin, Layers, Activity
 } from 'lucide-react';
 import { pilotService } from '../services/pilotService';
+import { hotspotService } from '../services/hotspotService';
 import type { Pilot, PilotStatus } from '../types';
 import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { ImpactBadge } from '../components/ui/ImpactBadge';
 import { Card } from '../components/ui/Card';
 import { useAuth } from '../hooks/useAuth';
+import { PageTransition } from '../components/ui/PageTransition';
 import { cn } from '../utils/cn';
 
 const PILOT_STATUSES: PilotStatus[] = ['PLANNED', 'BASELINE', 'INTERVENTION', 'RECOVERY', 'MONITORING', 'COMPLETED'];
@@ -41,15 +43,32 @@ export default function Pilots() {
   const [isTestRecord, setIsTestRecord] = useState(false);
 
   useEffect(() => {
-    pilotService.listPilots().then(data => {
-      setPilotsList(data);
-      if (id) {
-        const found = data.find(p => p.pilotId === id);
-        setSelectedPilot(found || data[0] || null);
-      } else {
-        setSelectedPilot(data[0] || null);
-      }
+    const unsubHotspots = hotspotService.subscribeToHotspots((hData) => {
+      hData.forEach(h => {
+        if (['cleared', 'cleaned', 'recovered', 'transformed'].includes(h.status)) {
+          pilotService.ensurePilotForHotspot(h);
+        }
+      });
     });
+
+    const unsubPilots = pilotService.subscribeToPilots((data) => {
+      setPilotsList(data);
+      setSelectedPilot(prev => {
+        if (id) {
+          return data.find(p => p.pilotId === id) || prev || data[0] || null;
+        }
+        if (prev) {
+          const matching = data.find(p => p.pilotId === prev.pilotId);
+          if (matching) return matching;
+        }
+        return data[0] || null;
+      });
+    });
+
+    return () => {
+      unsubHotspots();
+      unsubPilots();
+    };
   }, [id]);
 
   const handleCreatePilot = async (e: React.FormEvent) => {
@@ -111,7 +130,8 @@ export default function Pilots() {
   };
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-neutral-100 font-sans pb-28">
+    <PageTransition>
+      <div className="min-h-screen bg-neutral-950 text-neutral-100 font-sans pb-28">
       <ChainLinkAnimation 
         show={showCelebration} 
         message="Pilot site added to the recovery network." 
@@ -198,15 +218,28 @@ export default function Pilots() {
               {/* TIMELINE PROGRESS */}
               <div className="space-y-2">
                 <span className="text-xs font-mono font-bold text-neutral-400 uppercase">PILOT SURVEILLANCE TIMELINE</span>
-                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2 font-mono text-[10px]">
+                <motion.div
+                  variants={{
+                    hidden: { opacity: 0 },
+                    show: { opacity: 1, transition: { staggerChildren: 0.08 } }
+                  }}
+                  initial="hidden"
+                  whileInView="show"
+                  viewport={{ once: true, margin: '-40px' }}
+                  className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2 font-mono text-[10px]"
+                >
                   {SCHEDULE_STEPS.map((stepName, idx) => {
                     const statusIdx = PILOT_STATUSES.indexOf(selectedPilot.status);
                     const isPassed = idx <= Math.min(statusIdx, 7);
                     const isCurrent = idx === Math.min(statusIdx, 7);
 
                     return (
-                      <div 
-                        key={stepName} 
+                      <motion.div
+                        key={stepName}
+                        variants={{
+                          hidden: { opacity: 0, scale: 0.85, y: 15 },
+                          show: { opacity: 1, scale: 1, y: 0, transition: { duration: 0.35, ease: [0.34, 1.56, 0.64, 1] } }
+                        }}
                         className={cn(
                           "p-2.5 rounded-xl border text-center font-bold transition-all",
                           isCurrent 
@@ -218,10 +251,10 @@ export default function Pilots() {
                       >
                         <span className="block text-[8px] text-neutral-500">STAGE 0{idx + 1}</span>
                         <span className="text-xs">{stepName}</span>
-                      </div>
+                      </motion.div>
                     );
                   })}
-                </div>
+                </motion.div>
               </div>
 
               <p className="text-xs text-neutral-300 font-sans leading-relaxed">
@@ -435,5 +468,6 @@ export default function Pilots() {
       </AnimatePresence>
 
     </div>
+    </PageTransition>
   );
 }

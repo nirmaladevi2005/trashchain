@@ -1,10 +1,12 @@
-import { Outlet, Navigate } from 'react-router-dom';
+import { useLocation, useOutlet, Navigate } from 'react-router-dom';
+import { AnimatePresence, motion } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
 import { Sidebar } from './Sidebar';
 import { BottomNav } from './BottomNav';
 import { useAuth } from '../../hooks/useAuth';
 import { SidebarProvider, useSidebar } from '../../context/SidebarContext';
 import { cn } from '../../utils/cn';
+import { pageVariants, useShouldReduceMotion } from '../../utils/animationVariants';
 
 import { CustomCursor } from '../ui/CustomCursor';
 import { AppHeader } from './AppHeader';
@@ -12,6 +14,9 @@ import { AppHeader } from './AppHeader';
 function LayoutContent() {
   const { isAuthenticated, loading, isDemo } = useAuth();
   const { isCollapsed } = useSidebar();
+  const location = useLocation();
+  const currentOutlet = useOutlet();
+  const shouldReduceMotion = useShouldReduceMotion();
 
   if (loading) {
     return (
@@ -40,8 +45,23 @@ function LayoutContent() {
         )}
       >
         <AppHeader />
-        <div className="max-w-7xl mx-auto w-full flex-1 px-4 sm:px-6 md:px-8 py-6">
-          <Outlet />
+        <div className="max-w-7xl mx-auto w-full flex-1 px-4 sm:px-6 md:px-8 py-6 overflow-x-hidden">
+          {shouldReduceMotion ? (
+            currentOutlet
+          ) : (
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.div
+                key={location.pathname}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+                variants={pageVariants}
+                className="w-full flex-1 flex flex-col"
+              >
+                {currentOutlet}
+              </motion.div>
+            </AnimatePresence>
+          )}
         </div>
       </main>
       

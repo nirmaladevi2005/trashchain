@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { Trophy, Medal, Lock, Eye } from 'lucide-react';
 import { leaderboard, currentUser } from '../data/mockData';
 import { Card } from '../components/ui/Card';
@@ -7,40 +8,106 @@ import { Badge } from '../components/ui/Badge';
 import { ImpactBadge } from '../components/ui/ImpactBadge';
 import { cn } from '../utils/cn';
 import { useAuth } from '../hooks/useAuth';
+import { PageTransition } from '../components/ui/PageTransition';
+import { AnimatedCounter } from '../components/ui/AnimatedCounter';
 
 const CATEGORIES = ['Individuals', 'Colleges', 'Communities', 'Organizations'];
+
+function getInitials(name: string): string {
+  if (!name) return 'TC';
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  }
+  return name.slice(0, 2).toUpperCase();
+}
+
+function LeaderboardUserAvatar({
+  photoURL,
+  avatar,
+  name,
+  isCurrent
+}: {
+  photoURL?: string;
+  avatar?: string;
+  name: string;
+  isCurrent?: boolean;
+}) {
+  const [imageFailed, setImageFailed] = useState(false);
+  const imageUrl = !imageFailed ? (photoURL || avatar) : undefined;
+
+  if (imageUrl) {
+    return (
+      <img
+        src={imageUrl}
+        alt={name}
+        onError={() => setImageFailed(true)}
+        className={cn(
+          "w-11 h-11 rounded-full object-cover shrink-0 bg-neutral-800",
+          isCurrent && "ring-2 ring-fresh-400"
+        )}
+      />
+    );
+  }
+
+  return (
+    <div className={cn(
+      "w-11 h-11 rounded-full bg-forest-950 border border-fresh-500/40 text-fresh-400 font-black flex items-center justify-center text-xs shrink-0 font-mono",
+      isCurrent && "ring-2 ring-fresh-400"
+    )}>
+      {getInitials(name)}
+    </div>
+  );
+}
 
 export default function Leaderboard() {
   const { user: authUser, isDemo } = useAuth();
   const [activeCategory, setActiveCategory] = useState('Individuals');
 
-  // Exclude synthetic test user accounts from public leaderboard rankings
   const cleanLeaderboard = leaderboard.filter(u => !u.id.includes('smoketest') && !u.id.includes('test_user_'));
-  const leaders = [
-    { 
-      ...currentUser, 
-      id: authUser?.uid || currentUser.id, 
-      name: authUser?.displayName || currentUser.name, 
-      rankIndex: 1, 
-      verifiedRecoveries: 3, 
-      measuredWaste: '180 kg', 
-      chainLength: '4 Links', 
-      isCurrent: true,
-      publicProfile: authUser?.publicProfile ?? true
-    },
-    ...cleanLeaderboard.slice(1).map((u, i) => ({
+  const isCurrentUserPublic = authUser?.publicProfile === true;
+
+  const currentUserEntry = (isCurrentUserPublic && authUser) ? {
+    id: authUser.uid || 'demo-user-1',
+    name: authUser.displayName || 'Alex Chen',
+    avatar: authUser.photoURL || currentUser.avatar,
+    photoURL: authUser.photoURL,
+    environmentalScore: authUser.impactScore ?? 742,
+    rank: authUser.role || 'Eco Guardian',
+    verifiedRecoveries: authUser.locationsRecovered ?? 4,
+    measuredWaste: `${authUser.wasteRemovedKg ?? 340} kg`,
+    chainLength: `${authUser.missionsCompleted ?? 4} Links`,
+    isCurrent: true,
+    publicProfile: true,
+  } : null;
+
+  const seedUsers = cleanLeaderboard
+    .filter(u => u.id !== 'u-1' && u.id !== 'demo-user-1' && u.id !== authUser?.uid)
+    .map((u, i) => ({
       ...u,
-      rankIndex: i + 2,
-      verifiedRecoveries: 4 - (i % 3),
-      measuredWaste: `${450 - i * 60} kg`,
-      chainLength: `${5 - (i % 3)} Links`,
+      photoURL: u.avatar,
+      verifiedRecoveries: u.locationsRecovered || (4 - (i % 3)),
+      measuredWaste: `${u.wasteRemovedKg || (450 - i * 60)} kg`,
+      chainLength: `${u.missionsCompleted || (5 - (i % 3))} Links`,
       isCurrent: false,
-      publicProfile: i % 4 !== 3 // Every 4th rank simulates a private profile for testing
-    }))
-  ];
+      publicProfile: true,
+    }));
+
+  const rawUsers = currentUserEntry ? [currentUserEntry, ...seedUsers] : seedUsers;
+
+  const leaders = [...rawUsers]
+    .sort((a, b) => b.environmentalScore - a.environmentalScore)
+    .map((u, index) => ({
+      ...u,
+      rankIndex: index + 1
+    }));
+
+  const currentUserRankItem = leaders.find(u => u.isCurrent);
+  const currentUserRank = currentUserRankItem ? currentUserRankItem.rankIndex : null;
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-neutral-100 font-sans pb-28">
+    <PageTransition>
+      <div className="min-h-screen bg-neutral-950 text-neutral-100 font-sans pb-28">
       
       {/* 1. HEADER */}
       <div className="bg-neutral-950 border-b border-neutral-850 py-10 px-4 md:px-8">
@@ -56,19 +123,23 @@ export default function Leaderboard() {
               <Trophy className="w-9 h-9 text-amber-400" /> Recovery Leaders
             </h1>
             <p className="text-xs sm:text-sm text-neutral-400 max-w-xl font-sans">
-              Recognition for people turning action into measurable environmental recovery.
+              Recognition for community members turning field action into verified environmental recovery.
             </p>
           </div>
 
           {/* YOUR POSITION CARD */}
           <div className="bg-neutral-900 border border-forest-500/40 p-4 rounded-2xl shrink-0 flex items-center gap-4 font-mono">
             <div className="w-12 h-12 rounded-xl bg-forest-950 text-fresh-400 border border-fresh-500/40 flex items-center justify-center font-black text-lg">
-              #1
+              {isCurrentUserPublic && currentUserRank ? `#${currentUserRank}` : 'OFF'}
             </div>
             <div>
-              <span className="text-[10px] text-neutral-400 block uppercase">YOUR POSITION</span>
-              <span className="font-bold text-white text-sm">Top 1% in Local Region</span>
-              <span className="text-[10px] text-fresh-400 block font-bold">1,450 Impact Pts</span>
+              <span className="text-[10px] text-neutral-400 block uppercase">YOUR LEADERBOARD STATUS</span>
+              <span className="font-bold text-white text-sm">
+                {isCurrentUserPublic && currentUserRank ? `Publicly Listed (Rank #${currentUserRank})` : 'Private Profile (Hidden)'}
+              </span>
+              <span className="text-[10px] text-fresh-400 block font-bold">
+                {isCurrentUserPublic ? `${authUser?.impactScore ?? 742} Impact Pts` : 'Enable Public Profile in Settings'}
+              </span>
             </div>
           </div>
         </div>
@@ -76,23 +147,42 @@ export default function Leaderboard() {
 
       <div className="max-w-5xl mx-auto px-4 md:px-8 py-8 space-y-8">
 
+        {/* PRIVATE PROFILE NOTICE BANNER */}
+        {!isCurrentUserPublic && (
+          <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 font-mono text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-lg">
+            <div className="flex items-center gap-2.5">
+              <Lock className="w-5 h-5 text-amber-400 shrink-0" />
+              <div>
+                <span className="font-bold text-amber-200 block">Your Profile is Currently Private</span>
+                <span className="text-[11px] text-amber-300/80">Enable "Public Profile Visibility" in Account Settings to join the public community leaderboard.</span>
+              </div>
+            </div>
+            <Link
+              to="/profile"
+              className="px-4 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-200 font-bold shrink-0 transition-colors"
+            >
+              Open Settings
+            </Link>
+          </div>
+        )}
+
         {/* 2. COMMUNITY IMPACT BANNER */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 font-mono text-xs">
           <div className="bg-neutral-900 p-4 rounded-2xl border border-neutral-800 space-y-1">
             <span className="text-neutral-500 block text-[9px] uppercase">PEOPLE MOBILIZED</span>
-            <span className="text-2xl font-black text-white">184 Volunteers</span>
+            <span className="text-2xl font-black text-white"><AnimatedCounter value={184} suffix=" Volunteers" /></span>
             <span className="text-[9px] text-neutral-500 block">FIELD PARTICIPANTS</span>
           </div>
 
           <div className="bg-neutral-900 p-4 rounded-2xl border border-neutral-800 space-y-1">
             <span className="text-neutral-500 block text-[9px] uppercase">PLACES RECOVERED</span>
-            <span className="text-2xl font-black text-fresh-400">42 Sites</span>
+            <span className="text-2xl font-black text-fresh-400"><AnimatedCounter value={42} suffix=" Sites" /></span>
             <span className="text-[9px] text-neutral-500 block">VERIFIED RECOVERIES</span>
           </div>
 
           <div className="bg-neutral-900 p-4 rounded-2xl border border-neutral-800 space-y-1">
             <span className="text-neutral-500 block text-[9px] uppercase">MONITORING CHECKS</span>
-            <span className="text-2xl font-black text-yellow-400">128 Inspection Checkpoints</span>
+            <span className="text-2xl font-black text-yellow-400"><AnimatedCounter value={128} suffix=" Inspection Checkpoints" /></span>
             <span className="text-[9px] text-neutral-500 block">POST-CLEANUP</span>
           </div>
         </div>
@@ -114,15 +204,30 @@ export default function Leaderboard() {
         </div>
 
         {/* 4. RANKINGS ROWS */}
-        <div className="space-y-3 font-mono text-xs">
+        <motion.div
+          variants={{
+            hidden: { opacity: 0 },
+            show: { opacity: 1, transition: { staggerChildren: 0.08 } }
+          }}
+          initial="hidden"
+          animate="show"
+          className="space-y-3 font-mono text-xs"
+        >
           {leaders.map((user) => (
-            <Card 
-              key={user.id} 
-              className={cn(
-                "bg-neutral-900 border-neutral-800 text-white p-4 sm:p-5 rounded-2xl transition-all duration-300 hover:border-neutral-700",
-                user.isCurrent && "border-fresh-500/50 bg-forest-950/30 ring-1 ring-fresh-500/30"
-              )}
+            <motion.div
+              key={user.id}
+              variants={{
+                hidden: { opacity: 0, y: 18 },
+                show: { opacity: 1, y: 0, transition: { duration: 0.35, ease: [0.22, 1, 0.36, 1] } }
+              }}
+              whileHover={{ y: -4, scale: 1.005, transition: { duration: 0.18, ease: 'easeOut' } }}
             >
+              <Card
+                className={cn(
+                  "bg-neutral-900 border-neutral-800 text-white p-4 sm:p-5 rounded-2xl transition-all duration-300 hover:border-neutral-700",
+                  user.isCurrent && "border-fresh-500/50 bg-forest-950/30 ring-1 ring-fresh-500/30"
+                )}
+              >
               <div className="flex items-center gap-4">
                 
                 {/* Rank Badge */}
@@ -133,14 +238,12 @@ export default function Leaderboard() {
                   {user.rankIndex > 3 && <span className="text-base font-bold text-neutral-500">#{user.rankIndex}</span>}
                 </div>
 
-                {/* Avatar */}
-                <img 
-                  src={user.avatar} 
-                  alt={user.name} 
-                  className={cn(
-                    "w-11 h-11 rounded-full object-cover shrink-0",
-                    user.isCurrent && "ring-2 ring-fresh-400"
-                  )}
+                {/* Avatar with fallback */}
+                <LeaderboardUserAvatar
+                  photoURL={user.photoURL}
+                  avatar={user.avatar}
+                  name={user.name}
+                  isCurrent={user.isCurrent}
                 />
 
                 {/* User Details */}
@@ -150,11 +253,6 @@ export default function Leaderboard() {
                     {user.isCurrent && (
                       <span className="text-[9px] font-mono font-bold bg-fresh-500/20 text-fresh-300 px-2 py-0.5 rounded border border-fresh-500/30">
                         YOU
-                      </span>
-                    )}
-                    {!user.publicProfile && (
-                      <span className="text-[9px] font-mono font-bold bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded border border-amber-500/30 flex items-center gap-1">
-                        <Lock className="w-2.5 h-2.5" /> PRIVATE PROFILE
                       </span>
                     )}
                   </div>
@@ -196,10 +294,12 @@ export default function Leaderboard() {
 
               </div>
             </Card>
-          ))}
-        </div>
+          </motion.div>
+        ))}
+      </motion.div>
 
       </div>
     </div>
+    </PageTransition>
   );
 }

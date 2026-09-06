@@ -1,4 +1,4 @@
-export type HotspotStatus = 'reported' | 'mission_active' | 'cleaned' | 'transformed';
+export type HotspotStatus = 'reported' | 'active' | 'verified' | 'mission_active' | 'mission_assigned' | 'in_progress' | 'cleaned' | 'cleared' | 'recovered' | 'transformed';
 export type Severity = 'low' | 'medium' | 'high' | 'critical';
 export type WasteCategory = 'plastic' | 'electronic' | 'organic' | 'industrial' | 'mixed' | 'chemical';
 
@@ -54,6 +54,10 @@ export interface Hotspot {
   reportedAt: string;
   reporterId: string;
   images: string[];
+  beforePhotoUrl?: string;
+  imageUrl?: string;
+  photoURL?: string;
+  evidencePhoto?: string;
   locationAccuracy?: number; // e.g. ± 12 metres
   photoCapturedAt?: string;
   gpsAccuracy?: number;
@@ -323,6 +327,7 @@ export interface RecoveryRecord {
   id: string;
   activityId: string;
   referenceId: string;
+  hotspotId?: string;
   locationName: string;
   baseline: BaselineObservation;
   evidence: EvidenceRecord;
@@ -334,6 +339,7 @@ export interface RecoveryRecord {
 export interface MonitoringCheckpoint {
   id: string;
   recoveryRecordId: string;
+  hotspotId?: string;
   day: number; // 7, 14, 30, 60, 90
   scheduledDate: string;
   actualDate?: string;
@@ -430,4 +436,6 @@ export interface Pilot {
   createdAt: string;
   updatedAt: string;
   baselineObservation?: BaselineObservation;
+  hotspotId?: string;
+  missionId?: string;
 }

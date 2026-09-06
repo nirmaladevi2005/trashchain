@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
@@ -13,7 +13,6 @@ import { Badge } from '../components/ui/Badge';
 import { Card, CardContent } from '../components/ui/Card';
 import { ImpactBadge } from '../components/ui/ImpactBadge';
 import { 
-  mockMonitoringCheckpoints, 
   mockInterventionSite, 
   mockControlSite,
   mockRecoveryRecords
@@ -22,12 +21,49 @@ import { cn } from '../utils/cn';
 import type { MonitoringCheckpoint, RecurrenceStatus } from '../types';
 
 import { ImpactCelebration } from '../components/ui/impact/ImpactMoments';
+import { hotspotService, type FirestoreHotspot } from '../services/hotspotService';
+import { monitoringService } from '../services/monitoringService';
+import { PageTransition } from '../components/ui/PageTransition';
 
 export default function Monitoring() {
   const [showCelebration, setShowCelebration] = useState(false);
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'checkpoints' | 'did_comparison'>('checkpoints');
-  const [checkpoints, setCheckpoints] = useState<MonitoringCheckpoint[]>(mockMonitoringCheckpoints);
+  const [checkpoints, setCheckpoints] = useState<MonitoringCheckpoint[]>([]);
+  const [hotspotsList, setHotspotsList] = useState<FirestoreHotspot[]>([]);
+  const [selectedHotspotId, setSelectedHotspotId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const unsubscribeHotspots = hotspotService.subscribeToHotspots((data) => {
+      setHotspotsList(data);
+      data.forEach(h => {
+        if (['cleared', 'cleaned', 'recovered', 'transformed'].includes(h.status)) {
+          monitoringService.ensureMonitoringCheckpointsForHotspot(h);
+        }
+      });
+    });
+
+    const unsubscribeCheckpoints = monitoringService.subscribeToCheckpoints((chks) => {
+      setCheckpoints(chks);
+    });
+
+    return () => {
+      unsubscribeHotspots();
+      unsubscribeCheckpoints();
+    };
+  }, []);
+
+  const activeHotspot = hotspotsList.find(h => h.id === selectedHotspotId) ||
+    hotspotsList.find(h => ['cleared', 'cleaned', 'recovered', 'transformed'].includes(h.status)) ||
+    hotspotsList[0];
+
+  const activeLocationName = activeHotspot?.location || activeHotspot?.title || mockRecoveryRecords[0]?.locationName || 'Pine Street Lot';
+
+  const displayedCheckpoints = activeHotspot
+    ? checkpoints.filter(c => c.hotspotId === activeHotspot.id || c.recoveryRecordId.includes(activeHotspot.id))
+    : checkpoints;
+
+  const currentCheckpointsList = displayedCheckpoints.length > 0 ? displayedCheckpoints : checkpoints;
   
   // Selected checkpoint for completion modal/form
   const [activeModalChk, setActiveModalChk] = useState<MonitoringCheckpoint | null>(null);
@@ -90,29 +126,26 @@ export default function Monitoring() {
     }
   };
 
-  const handleSaveCheckpoint = () => {
+  const handleSaveCheckpoint = async () => {
     if (!activeModalChk) return;
-    setCheckpoints(prev => prev.map(c => {
-      if (c.id === activeModalChk.id) {
-        return {
-          ...c,
-          status: 'completed',
-          actualDate: new Date().toISOString().split('T')[0],
-          photoUrl,
-          recurrenceStatus: recStatus,
-          estimatedRecurrenceKg: Number(recKg),
-          cleanlinessScore: Number(cleanScore),
-          communityObservation: commObs
-        };
-      }
-      return c;
-    }));
+    const updated: MonitoringCheckpoint = {
+      ...activeModalChk,
+      status: 'completed',
+      actualDate: new Date().toISOString().split('T')[0],
+      photoUrl,
+      recurrenceStatus: recStatus,
+      estimatedRecurrenceKg: Number(recKg),
+      cleanlinessScore: Number(cleanScore),
+      communityObservation: commObs
+    };
+
+    await monitoringService.saveCheckpoint(updated);
     setActiveModalChk(null);
     setShowCelebration(true);
   };
 
   // Calculate Transparency & Reduction Stats
-  const completedCheckpoints = checkpoints.filter(c => c.status === 'completed');
+  const completedCheckpoints = currentCheckpointsList.filter(c => c.status === 'completed');
   const totalRecurrenceKg = completedCheckpoints.reduce((sum, c) => sum + (c.estimatedRecurrenceKg || 0), 0);
   
   // Average monthly recurrence based on completed days
@@ -127,7 +160,8 @@ export default function Monitoring() {
     : null;
 
   return (
-    <div className="min-h-screen bg-neutral-900 text-neutral-100 pb-32">
+    <PageTransition>
+      <div className="min-h-screen bg-neutral-900 text-neutral-100 pb-32">
       <ImpactCelebration 
         show={showCelebration} 
         title="Monitoring Recorded" 
@@ -267,30 +301,151 @@ export default function Monitoring() {
               </CardContent>
             </Card>
 
+            {/* Monitored Pollution Sites & Real-Time Feed */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="success" className="bg-fresh-500/20 text-fresh-400 border-fresh-500/30 text-[10px] font-mono uppercase">
+                      SURVEILLANCE NETWORK
+                    </Badge>
+                    <span className="text-xs font-mono text-neutral-400">CENTRAL HOTSPOT FEED</span>
+                  </div>
+                  <h3 className="text-xl font-bold text-white mt-1 flex items-center gap-2">
+                    <Activity className="w-5 h-5 text-fresh-400" /> Monitored Pollution Hotspots ({hotspotsList.length})
+                  </h3>
+                </div>
+                <span className="text-xs font-mono text-neutral-400 hidden sm:block">
+                  Live status sync across Explore, Missions & Monitoring
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {hotspotsList.map((hotspot) => {
+                  const isSelected = activeHotspot?.id === hotspot.id;
+                  return (
+                    <Card
+                      key={hotspot.id}
+                      onClick={() => setSelectedHotspotId(hotspot.id)}
+                      className={cn(
+                        "bg-neutral-950 border transition-all text-white overflow-hidden flex flex-col justify-between cursor-pointer",
+                        isSelected ? "border-forest-500 ring-2 ring-forest-500/30" : "border-neutral-800 hover:border-forest-500/50"
+                      )}
+                    >
+                    <CardContent className="p-4 space-y-3">
+                      <div className="h-32 relative rounded-xl overflow-hidden bg-neutral-900">
+                        <img
+                          src={hotspot.images?.[0] || hotspot.beforePhotoUrl || 'https://images.unsplash.com/photo-1530587191325-3db32d826c18?auto=format&fit=crop&q=80&w=800'}
+                          alt={hotspot.title}
+                          className="w-full h-full object-cover"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-neutral-950 via-neutral-950/20 to-transparent" />
+                        <div className="absolute top-2 left-2 flex gap-1.5">
+                          <Badge variant="outline" className="bg-neutral-950/80 text-[9px] font-mono text-neutral-300 border-neutral-700">
+                            {hotspot.dataSource}
+                          </Badge>
+                        </div>
+                        <div className="absolute top-2 right-2 flex gap-1.5">
+                          <Badge variant={hotspot.severity === 'critical' ? 'danger' : 'default'} className="uppercase text-[9px] shadow bg-neutral-950/80">
+                            {hotspot.severity}
+                          </Badge>
+                          <Badge variant="warning" className="uppercase text-[9px] shadow bg-amber-500/20 text-amber-300 border-amber-500/30 font-mono">
+                            {hotspot.status}
+                          </Badge>
+                        </div>
+                        <div className="absolute bottom-2 left-2 right-2">
+                          <h4 className="font-bold text-white text-sm line-clamp-1">{hotspot.title}</h4>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5 font-mono text-xs">
+                        <p className="text-neutral-300 text-xs flex items-center">
+                          <MapPin className="w-3.5 h-3.5 mr-1 text-neutral-400 shrink-0" />
+                          <span className="truncate">{hotspot.location}</span>
+                        </p>
+                        <div className="flex flex-wrap gap-1.5 text-[10px]">
+                          <span className="px-2 py-0.5 bg-neutral-900 text-neutral-300 rounded border border-neutral-800 capitalize">
+                            {hotspot.category} waste
+                          </span>
+                          <span className="px-2 py-0.5 bg-neutral-900 text-neutral-300 rounded border border-neutral-800">
+                            {hotspot.estimatedWaste}
+                          </span>
+                          <span className="px-2 py-0.5 bg-neutral-900 text-fresh-400 rounded border border-neutral-800">
+                            GPS: {hotspot.coordinates?.lat.toFixed(4)}, {hotspot.coordinates?.lng.toFixed(4)}
+                          </span>
+                        </div>
+                        {hotspot.aiAnalysis && (
+                          <p className="text-[10px] font-sans text-neutral-400 bg-neutral-900 p-2 rounded-lg border border-neutral-850 line-clamp-2">
+                            <span className="text-purple-400 font-mono font-bold block text-[9px] uppercase">AI SCENE SUMMARY</span>
+                            {hotspot.aiAnalysis.risk || hotspot.aiAnalysis.immediateAction}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="pt-2 flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => navigate(`/explore?hotspotId=${hotspot.id}`)}
+                          className="flex-1 border-neutral-800 text-neutral-300 text-[11px] font-bold py-2"
+                        >
+                          View on Map
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => navigate(`/missions?startMissionFor=${hotspot.id}`)}
+                          className="flex-1 bg-forest-600 hover:bg-forest-700 text-white text-[11px] font-bold py-2"
+                        >
+                          Missions
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+              </div>
+            </div>
+
             {/* 30/60/90 Day Checkpoint Timeline */}
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                  <Calendar className="w-5 h-5 text-fresh-400" /> Surveillance Checkpoints — {recovery?.locationName || 'Pine Street Lot'}
+                  <Calendar className="w-5 h-5 text-fresh-400" /> Surveillance Checkpoints — {activeLocationName}
                 </h3>
                 <span className="text-xs font-mono text-neutral-400">
-                  {completedCheckpoints.length} of {checkpoints.length} Checkpoints Completed
+                  {completedCheckpoints.length} of {currentCheckpointsList.length} Checkpoints Completed
                 </span>
               </div>
 
-              <div className="space-y-4">
-                {checkpoints.map((chk) => {
+              <motion.div
+                variants={{
+                  hidden: { opacity: 0 },
+                  show: { opacity: 1, transition: { staggerChildren: 0.1 } }
+                }}
+                initial="hidden"
+                whileInView="show"
+                viewport={{ once: true, margin: '-40px' }}
+                className="space-y-4"
+              >
+                {currentCheckpointsList.map((chk) => {
                   const isCompleted = chk.status === 'completed';
                   const isPending = chk.status === 'pending';
                   
                   return (
-                    <Card 
-                      key={chk.id} 
-                      className={cn(
-                        "bg-neutral-950 border transition-all",
-                        isCompleted ? "border-forest-500/50 hover:border-forest-500" : "border-neutral-800 hover:border-neutral-700"
-                      )}
+                    <motion.div
+                      key={chk.id}
+                      variants={{
+                        hidden: { opacity: 0, y: 24, scale: 0.98 },
+                        show: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.45, ease: [0.22, 1, 0.36, 1] } }
+                      }}
+                      whileHover={{ y: -3, scale: 1.005, transition: { duration: 0.18 } }}
                     >
+                      <Card
+                        className={cn(
+                          "bg-neutral-950 border transition-all",
+                          isCompleted ? "border-forest-500/50 hover:border-forest-500" : "border-neutral-800 hover:border-neutral-700"
+                        )}
+                      >
                       <CardContent className="p-5 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
                         
                         <div className="flex items-start gap-4">
@@ -373,9 +528,10 @@ export default function Monitoring() {
                         </div>
                       </CardContent>
                     </Card>
-                  );
-                })}
-              </div>
+                  </motion.div>
+                );
+              })}
+            </motion.div>
             </div>
 
           </motion.div>
@@ -635,5 +791,6 @@ export default function Monitoring() {
       )}
 
     </div>
+    </PageTransition>
   );
 }

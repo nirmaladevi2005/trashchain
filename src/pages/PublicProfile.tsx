@@ -1,15 +1,17 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { 
-  ShieldCheck, MapPin, Building2, Users, Globe, ArrowLeft, 
-  Lock, Loader2, ArrowRight, ExternalLink 
+import {
+  ShieldCheck, MapPin, Building2, Users, Globe, ArrowLeft,
+  Lock, Loader2, ArrowRight, ExternalLink, AlertTriangle, Check
 } from 'lucide-react';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { ImpactBadge } from '../components/ui/ImpactBadge';
 import { Button } from '../components/ui/Button';
 import { authService, type PublicProfileData } from '../services/authService';
+import { PageTransition } from '../components/ui/PageTransition';
+import { staggerContainer, fadeUpItem } from '../utils/animationVariants';
 
 function getInitials(name: string): string {
   if (!name) return 'TC';
@@ -83,7 +85,8 @@ export default function PublicProfile() {
 
   // PUBLIC ENVIRONMENTAL PROFILE STATE
   return (
-    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 text-neutral-900 dark:text-neutral-100 font-sans pb-28 transition-colors duration-200">
+    <PageTransition>
+      <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 text-neutral-900 dark:text-neutral-100 font-sans pb-28 transition-colors duration-200">
       
       {/* 1. HERO SECTION */}
       <div className="bg-white dark:bg-neutral-950 border-b border-neutral-200 dark:border-neutral-850 py-10 px-4 md:px-8">
@@ -237,6 +240,46 @@ export default function PublicProfile() {
           </div>
         </Card>
 
+        {/* 4.5 PUBLIC USER ACTIVITY HISTORY */}
+        {profile.activities && profile.activities.length > 0 && (
+          <Card className="bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800 text-neutral-900 dark:text-white p-6 rounded-3xl space-y-4 shadow-sm">
+            <div className="flex items-center justify-between border-b border-neutral-100 dark:border-neutral-800 pb-3">
+              <div>
+                <h3 className="text-lg font-bold text-neutral-900 dark:text-white">Public Activity History</h3>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 font-sans">Verified contributions and field actions logged in TrashChain.</p>
+              </div>
+              <Badge variant="success" className="bg-fresh-500/10 text-fresh-700 dark:text-fresh-400 border-fresh-500/30 font-mono text-[10px]">
+                {profile.activities.length} ACTIONS LOGGED
+              </Badge>
+            </div>
+
+            <div className="space-y-3 font-mono text-xs">
+              {profile.activities.map((act) => (
+                <div key={act.id} className="p-3.5 rounded-2xl bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-850 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 rounded-xl bg-forest-50 dark:bg-neutral-900 text-forest-600 dark:text-fresh-400 border border-forest-500/20">
+                      {act.type === 'report' && <AlertTriangle className="w-4 h-4 text-amber-500" />}
+                      {act.type === 'mission_organize' && <Users className="w-4 h-4 text-forest-600 dark:text-fresh-400" />}
+                      {act.type === 'mission_join' && <Check className="w-4 h-4 text-blue-500" />}
+                      {(act.type === 'cleanup_completed' || act.type === 'recovery_verified') && <ShieldCheck className="w-4 h-4 text-fresh-500" />}
+                    </div>
+                    <div>
+                      <span className="font-bold text-neutral-900 dark:text-white text-sm block">{act.title}</span>
+                      <span className="text-[10px] text-neutral-500 block">{act.location ? `${act.location} • ` : ''}{act.timestamp}</span>
+                    </div>
+                  </div>
+
+                  {act.impactBadge && (
+                    <span className="px-2.5 py-1 rounded-lg bg-forest-500/10 text-forest-700 dark:text-fresh-400 font-bold text-[10px] shrink-0 border border-forest-500/20">
+                      {act.impactBadge}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </Card>
+        )}
+
         {/* 5. VISUAL RECOVERY CHAIN */}
         <Card className="bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800 text-neutral-900 dark:text-white p-6 rounded-3xl space-y-4 shadow-sm">
           <div className="flex items-center justify-between border-b border-neutral-100 dark:border-neutral-800 pb-3">
@@ -271,32 +314,71 @@ export default function PublicProfile() {
           </div>
         </Card>
 
-        {/* 6. PUBLIC ACHIEVEMENTS */}
+        {/* 6. PUBLIC ACHIEVEMENTS & BADGES */}
         <Card className="bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800 text-neutral-900 dark:text-white p-6 rounded-3xl space-y-4 shadow-sm">
           <div className="flex items-center justify-between border-b border-neutral-100 dark:border-neutral-800 pb-3">
             <div>
-              <h3 className="text-lg font-bold text-neutral-900 dark:text-white">Environmental Badges</h3>
-              <p className="text-xs text-neutral-500 dark:text-neutral-400 font-sans">Verified field achievements.</p>
+              <h3 className="text-lg font-bold text-neutral-900 dark:text-white">Badges & Achievements</h3>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400 font-sans">Verified field achievements earned through environmental action.</p>
             </div>
             <Badge variant="success" className="bg-fresh-500/10 text-fresh-700 dark:text-fresh-400 border-fresh-500/30 font-mono text-[10px]">
-              {profile.publicAchievements.length} UNLOCKED
+              {profile.publicAchievements ? profile.publicAchievements.length : 0} UNLOCKED
             </Badge>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-            {profile.publicAchievements.map((ach) => (
-              <div key={ach.id} className="p-4 rounded-2xl bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-850 flex items-start gap-3">
-                <span className="text-2xl p-2 bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-800 shadow-sm">{ach.icon}</span>
-                <div>
-                  <h4 className="font-bold text-neutral-900 dark:text-white text-sm">{ach.title}</h4>
-                  <p className="text-xs text-neutral-500 dark:text-neutral-400 font-sans mt-0.5">{ach.desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
+          {(!profile.publicAchievements || profile.publicAchievements.length === 0) ? (
+            <div className="p-8 text-center bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-850 rounded-2xl space-y-2">
+              <div className="text-3xl">🛡️</div>
+              <p className="text-sm font-bold text-neutral-700 dark:text-neutral-300">No Environmental Badges Earned Yet</p>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400 font-mono max-w-sm mx-auto">
+                Badges are automatically unlocked when completing reports, cleanup missions, and verified site recoveries.
+              </p>
+            </div>
+          ) : (
+            <motion.div
+              variants={staggerContainer}
+              initial="hidden"
+              animate="show"
+              className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4"
+            >
+              {profile.publicAchievements.map((ach) => (
+                <motion.div
+                  key={ach.id}
+                  variants={fadeUpItem}
+                  whileHover={{ y: -4, scale: 1.01, transition: { duration: 0.18 } }}
+                  className="p-4 rounded-2xl bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-850 flex items-start gap-3 transition-all hover:border-forest-500/40"
+                >
+                  <span className="text-2xl p-2.5 bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-800 shadow-sm shrink-0">
+                    {ach.icon || '🏅'}
+                  </span>
+                  <div className="space-y-1 min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <h4 className="font-bold text-neutral-900 dark:text-white text-sm truncate">
+                        {ach.title || ach.name || 'Environmental Badge'}
+                      </h4>
+                      {ach.category && (
+                        <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-forest-500/10 text-forest-700 dark:text-fresh-400 border border-forest-500/20 font-bold">
+                          {ach.category}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-neutral-500 dark:text-neutral-400 font-sans leading-relaxed">
+                      {ach.desc || ach.description || 'Verified environmental milestone.'}
+                    </p>
+                    {ach.earnedAt && (
+                      <span className="text-[10px] font-mono text-neutral-400 block pt-1">
+                        Unlocked on {ach.earnedAt}
+                      </span>
+                    )}
+                  </div>
+                </motion.div>
+              ))}
+            </motion.div>
+          )}
         </Card>
 
       </div>
     </div>
+    </PageTransition>
   );
 }

@@ -4,6 +4,7 @@ import { Loader2, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { BrandLogo } from '../components/ui/BrandLogo';
 import { useAuth } from '../hooks/useAuth';
+import { PageTransition } from '../components/ui/PageTransition';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -62,7 +63,8 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col justify-center items-center bg-[#F6F8F5] dark:bg-[#0A0F0D] text-[#0F172A] dark:text-[#F8FAFC] px-4 py-8 font-sans transition-colors duration-200">
+    <PageTransition>
+      <div className="min-h-screen flex flex-col justify-center items-center bg-[#F6F8F5] dark:bg-[#0A0F0D] text-[#0F172A] dark:text-[#F8FAFC] px-4 py-8 font-sans transition-colors duration-200">
       <div className="w-full max-w-md bg-white dark:bg-[#121915] p-6 sm:p-8 rounded-3xl shadow-sm border border-[#E2E8F0] dark:border-[#1E2C24] space-y-6">
         
         {/* Brand Header */}
@@ -212,5 +214,6 @@ export default function Login() {
 
       </div>
     </div>
+    </PageTransition>
   );
 }

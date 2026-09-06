@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
@@ -11,6 +11,8 @@ import { ImpactBadge } from '../components/ui/ImpactBadge';
 import { Button } from '../components/ui/Button';
 import { cn } from '../utils/cn';
 import { useAuth } from '../hooks/useAuth';
+import { hotspotService, type FirestoreHotspot } from '../services/hotspotService';
+import { PageTransition } from '../components/ui/PageTransition';
 
 const STAGES_MASTER = [
   { id: '01', title: 'POLLUTION DETECTED', date: '2026-07-20', status: 'completed', desc: 'Illegal dumping report filed by citizen volunteer.', badge: 'USER-REPORTED' },
@@ -29,8 +31,15 @@ export default function Timeline() {
   const navigate = useNavigate();
   const { isDemo } = useAuth();
 
+  const [allHotspots, setAllHotspots] = useState<FirestoreHotspot[]>([]);
+
+  useEffect(() => {
+    const unsub = hotspotService.subscribeToHotspots((hList) => setAllHotspots(hList));
+    return () => unsub();
+  }, []);
+
   const timeline = recoveryTimelines[0];
-  const hotspot = hotspots.find(h => h.id === (id || timeline?.hotspotId)) || hotspots[0];
+  const hotspot = allHotspots.find(h => h.id === (id || timeline?.hotspotId)) || hotspots.find(h => h.id === (id || timeline?.hotspotId)) || allHotspots[0] || hotspots[0];
   const mission = missions[0];
 
   const [compareView, setCompareView] = useState<'side' | 'slider'>('side');
@@ -39,7 +48,8 @@ export default function Timeline() {
   if (!hotspot) return null;
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-neutral-100 font-sans pb-28">
+    <PageTransition>
+      <div className="min-h-screen bg-neutral-950 text-neutral-100 font-sans pb-28">
       
       {/* 1. PAGE HEADER */}
       <header className="bg-neutral-950 border-b border-neutral-850 py-10 px-4 md:px-8">
@@ -204,9 +214,26 @@ export default function Timeline() {
         {activeTab === 'timeline' && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
             
-            <div className="relative border-l-2 border-neutral-850 ml-4 pl-6 space-y-8">
+            <motion.div
+              variants={{
+                hidden: { opacity: 0 },
+                show: { opacity: 1, transition: { staggerChildren: 0.1 } }
+              }}
+              initial="hidden"
+              whileInView="show"
+              viewport={{ once: true, margin: '-40px' }}
+              className="relative border-l-2 border-neutral-850 ml-4 pl-6 space-y-8"
+            >
               {STAGES_MASTER.map((stage, idx) => (
-                <div key={stage.id} className="relative">
+                <motion.div
+                  key={stage.id}
+                  variants={{
+                    hidden: { opacity: 0, x: -20, y: 15 },
+                    show: { opacity: 1, x: 0, y: 0, transition: { duration: 0.4, ease: [0.22, 1, 0.36, 1] } }
+                  }}
+                  whileHover={{ x: 4, transition: { duration: 0.18 } }}
+                  className="relative"
+                >
                   {/* Glowing Node Dot */}
                   <div className={cn(
                     "absolute -left-[31px] top-1 w-5 h-5 rounded-full border-2 flex items-center justify-center font-mono text-[9px] font-bold transition-all",
@@ -228,9 +255,9 @@ export default function Timeline() {
 
                     <p className="text-xs text-neutral-300 font-sans leading-relaxed">{stage.desc}</p>
                   </Card>
-                </div>
+                </motion.div>
               ))}
-            </div>
+            </motion.div>
 
             {/* 6. WASTE REMOVAL BREAKDOWN & 7. COMMUNITY IMPACT */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -355,5 +382,6 @@ export default function Timeline() {
 
       </div>
     </div>
+    </PageTransition>
   );
 }

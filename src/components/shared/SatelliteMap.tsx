@@ -85,21 +85,26 @@ export function SatelliteMap({ items = [], selectedHotspotId, onSelectHotspot }:
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
   const [showLegend, setShowLegend] = useState<boolean>(true);
 
-  // Map center priority: 1. Field Data hotspot 2. Mission hotspot 3. First hotspot 4. Regional fallback
-  const fieldHotspot = items.find(i => i.dataSource === 'FIELD DATA' && i.coordinates);
-  const missionHotspot = items.find(i => i.status === 'mission_active' && i.coordinates);
-  const firstHotspot = items.find(i => i.coordinates);
+  // Map center priority: 1. Selected hotspot 2. First hotspot with valid coordinates 3. Regional fallback
+  const validHotspot = items.find(i => i.coordinates && typeof i.coordinates.lat === 'number' && typeof i.coordinates.lng === 'number');
 
-  const defaultCenter: [number, number] = fieldHotspot?.coordinates
-    ? [fieldHotspot.coordinates.lat, fieldHotspot.coordinates.lng]
-    : missionHotspot?.coordinates
-    ? [missionHotspot.coordinates.lat, missionHotspot.coordinates.lng]
-    : firstHotspot?.coordinates
-    ? [firstHotspot.coordinates.lat, firstHotspot.coordinates.lng]
-    : [18.403127, 77.699866];
+  const defaultCenter: [number, number] = validHotspot?.coordinates
+    ? [validHotspot.coordinates.lat, validHotspot.coordinates.lng]
+    : [40.7128, -74.0060];
 
   const [mapCenter, setMapCenter] = useState<[number, number]>(defaultCenter);
   const [zoom, setZoom] = useState<number>(13);
+
+  // Auto-center map on selected hotspot when selectedHotspotId changes
+  useEffect(() => {
+    if (selectedHotspotId && items.length > 0) {
+      const selected = items.find(i => i.id === selectedHotspotId);
+      if (selected && selected.coordinates && typeof selected.coordinates.lat === 'number' && typeof selected.coordinates.lng === 'number') {
+        setMapCenter([selected.coordinates.lat, selected.coordinates.lng]);
+        setZoom(15);
+      }
+    }
+  }, [selectedHotspotId, items]);
 
   // Browser Geolocation
   const handleLocateUser = () => {

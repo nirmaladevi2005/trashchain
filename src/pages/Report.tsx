@@ -18,6 +18,7 @@ import type {
   EvidenceSourceType, LocationSourceType, PollutionAIAnalysis, RecoveryPlan
 } from '../types';
 import { useAuth } from '../hooks/useAuth';
+import { PageTransition } from '../components/ui/PageTransition';
 import { auth, isDemoMode } from '../lib/firebase';
 import { hotspotService } from '../services/hotspotService';
 import { storageService } from '../services/storageService';
@@ -356,10 +357,30 @@ export default function Report() {
 
     setIsSubmitting(true);
     try {
+      // Guarantee persistent non-blob image URL prior to saving hotspot
+      let persistentImageUrl = report.imageUrl || '';
+      if (selectedFile && (!persistentImageUrl || persistentImageUrl.startsWith('blob:'))) {
+        try {
+          persistentImageUrl = await storageService.uploadBeforePhoto(selectedFile, `draft_${Date.now()}`);
+        } catch (err) {
+          console.warn('[Report] Fallback to FileReader DataURL conversion:', err);
+          persistentImageUrl = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = () => resolve(report.imageUrl || '');
+            reader.readAsDataURL(selectedFile);
+          });
+        }
+      }
+
+      const finalImages = persistentImageUrl
+        ? [persistentImageUrl]
+        : ['https://images.unsplash.com/photo-1530587191325-3db32d826c18?auto=format&fit=crop&q=80&w=800'];
+
       const newHotspotId = await hotspotService.createHotspot({
-        title: report.location?.name ? `Hotspot at ${report.location.name}` : 'Reported Pollution Hotspot',
+        title: report.location?.name || 'Reported Pollution Hotspot',
         description: report.description || 'Reported via TrashChain Field App.',
-        location: report.location?.address || 'Pine Street Lot',
+        location: report.location?.address || report.location?.name || 'Pine Street Lot',
         coordinates: report.location ? { lat: report.location.lat, lng: report.location.lng } : { lat: 40.7128, lng: -74.0060 },
         distance: '0.8 km',
         estimatedWaste: report.estimatedWaste || 'Approx. 45 kg',
@@ -368,8 +389,11 @@ export default function Report() {
         status: 'reported',
         reportedAt: new Date().toISOString().split('T')[0],
         reporterId: liveReporterId,
-        images: report.imageUrl ? [report.imageUrl] : ['https://images.unsplash.com/photo-1530587191325-3db32d826c18?auto=format&fit=crop&q=80&w=800'],
-        beforePhotoUrl: report.imageUrl || '',
+        images: finalImages,
+        beforePhotoUrl: persistentImageUrl || finalImages[0],
+        imageUrl: persistentImageUrl || finalImages[0],
+        photoURL: persistentImageUrl || finalImages[0],
+        evidencePhoto: persistentImageUrl || finalImages[0],
         photoCapturedAt: report.photoCapturedAt || new Date().toISOString(),
         gpsAccuracy: report.gpsAccuracy,
         locationCapturedAt: report.locationCapturedAt,
@@ -412,7 +436,8 @@ export default function Report() {
   };
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-neutral-100 font-sans pb-28">
+    <PageTransition>
+      <div className="min-h-screen bg-neutral-950 text-neutral-100 font-sans pb-28">
       
       {/* Reusable Celebration Micro-Interaction */}
       <ImpactCelebration 
@@ -1024,5 +1049,6 @@ export default function Report() {
       )}
 
     </div>
+    </PageTransition>
   );
 }

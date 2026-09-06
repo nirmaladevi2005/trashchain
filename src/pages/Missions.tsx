@@ -14,6 +14,7 @@ import { EmptyState } from '../components/shared/States';
 import { hotspotService, type FirestoreHotspot } from '../services/hotspotService';
 import { missionService, type FirestoreMission } from '../services/missionService';
 import { useAuth } from '../hooks/useAuth';
+import { PageTransition } from '../components/ui/PageTransition';
 
 const FILTERS = ['All', 'Nearby', 'Critical', 'Plastic', 'Mixed Waste', 'Organic', 'My Missions', 'Completed'];
 const SORTS = ['Highest Impact', 'Nearest', 'Most Urgent', 'Newest'];
@@ -69,13 +70,18 @@ export default function Missions() {
   }, []);
 
   // Candidate hotspots that need action:
-  // 1. Not closed/resolved/cleaned/transformed
-  // 2. Not already associated with an active mission
+  // 1. Status is reported or active (not closed: cleaned, cleared, transformed)
+  // 2. Not assigned or active in an existing mission
   const reportedPlacesNeedingAction = useMemo(() => {
     return allHotspots.filter(h => {
-      const isClosed = h.status === 'cleaned' || h.status === 'transformed';
-      const hasActiveMission = allMissions.some(m => m.hotspotId === h.id);
-      return !isClosed && !hasActiveMission;
+      const isClosed = h.status === 'cleaned' || h.status === 'cleared' || h.status === 'transformed';
+      const isAssigned = h.status === 'mission_active' || h.status === 'mission_assigned' || h.status === 'in_progress';
+      const hasActiveMission = allMissions.some(m =>
+        (m.hotspotId === h.id || (m as any).linkedHotspotId === h.id) &&
+        m.status !== 'completed' &&
+        m.status !== 'verified'
+      );
+      return !isClosed && !isAssigned && !hasActiveMission;
     });
   }, [allHotspots, allMissions]);
 
@@ -84,7 +90,7 @@ export default function Missions() {
     return allMissions.map(mission => ({
       ...mission,
       hotspot: allHotspots.find(h => h.id === mission.hotspotId)
-    })).filter(m => m.hotspot);
+    }));
   }, [allMissions, allHotspots]);
 
   // Handle URL pre-selection query param e.g. /missions?startMissionFor=field-hotspot-123
@@ -165,29 +171,32 @@ export default function Missions() {
     if (activeFilter === 'My Missions') return isMine;
     if (activeFilter === 'Completed') return mission.status === 'verified' || mission.status === 'completed';
     
-    if (activeFilter === 'Nearby') return parseFloat(mission.hotspot!.distance) < 2.0;
-    if (activeFilter === 'Critical') return mission.hotspot!.severity === 'critical';
-    if (activeFilter === 'Plastic') return mission.hotspot!.category === 'plastic';
-    if (activeFilter === 'Mixed Waste') return mission.hotspot!.category === 'mixed';
-    if (activeFilter === 'Organic') return mission.hotspot!.category === 'organic';
+    if (activeFilter === 'Nearby') return parseFloat(mission.hotspot?.distance || '0.8 km') < 2.0;
+    if (activeFilter === 'Critical') return mission.hotspot?.severity === 'critical';
+    if (activeFilter === 'Plastic') return mission.hotspot?.category === 'plastic';
+    if (activeFilter === 'Mixed Waste') return mission.hotspot?.category === 'mixed';
+    if (activeFilter === 'Organic') return mission.hotspot?.category === 'organic';
     
     return true; // 'All'
   });
 
   // Apply sorting
   filteredMissions = filteredMissions.sort((a, b) => {
-    if (activeSort === 'Nearest') return parseFloat(a.hotspot!.distance) - parseFloat(b.hotspot!.distance);
+    if (activeSort === 'Nearest') return parseFloat(a.hotspot?.distance || '0.8 km') - parseFloat(b.hotspot?.distance || '0.8 km');
     if (activeSort === 'Highest Impact') return b.points - a.points;
     if (activeSort === 'Newest') return new Date(b.date).getTime() - new Date(a.date).getTime();
     if (activeSort === 'Most Urgent') {
-      const severityScore = { critical: 4, high: 3, medium: 2, low: 1 };
-      return severityScore[b.hotspot!.severity] - severityScore[a.hotspot!.severity];
+      const severityScore: Record<string, number> = { critical: 4, high: 3, medium: 2, low: 1 };
+      const aScore = severityScore[a.hotspot?.severity || 'medium'] || 2;
+      const bScore = severityScore[b.hotspot?.severity || 'medium'] || 2;
+      return bScore - aScore;
     }
     return 0;
   });
 
   return (
-    <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-8 bg-neutral-950 text-neutral-100 min-h-screen font-sans">
+    <PageTransition>
+      <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-8 bg-neutral-950 text-neutral-100 min-h-screen font-sans">
       
       {/* SUCCESS NOTIFICATION TOAST */}
       <AnimatePresence>
@@ -588,5 +597,6 @@ export default function Missions() {
       </AnimatePresence>
 
     </div>
+    </PageTransition>
   );
 }

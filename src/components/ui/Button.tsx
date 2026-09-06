@@ -1,18 +1,23 @@
 import * as React from 'react';
+import { motion, type HTMLMotionProps } from 'framer-motion';
 import { cn } from '../../utils/cn';
 
-export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+export interface ButtonProps extends Omit<HTMLMotionProps<'button'>, 'children'> {
   variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
   size?: 'sm' | 'md' | 'lg';
+  children?: React.ReactNode;
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant = 'primary', size = 'md', ...props }, ref) => {
+  ({ className, variant = 'primary', size = 'md', children, ...props }, ref) => {
     return (
-      <button
+      <motion.button
         ref={ref}
+        whileHover={{ scale: 1.025, y: -1 }}
+        whileTap={{ scale: 0.975 }}
+        transition={{ duration: 0.18, ease: 'easeOut' }}
         className={cn(
-          "inline-flex items-center justify-center rounded-xl font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-forest-500 focus-visible:ring-offset-2 active:scale-[0.98] cursor-pointer disabled:pointer-events-none disabled:opacity-50 select-none",
+          "inline-flex items-center justify-center rounded-xl font-semibold transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-forest-500 focus-visible:ring-offset-2 cursor-pointer disabled:pointer-events-none disabled:opacity-50 select-none",
           {
             'bg-forest-700 hover:bg-forest-800 text-white shadow-sm hover:shadow-forest-700/20': variant === 'primary',
             'bg-fresh-500/10 text-fresh-700 dark:text-fresh-300 hover:bg-fresh-500/20 border border-fresh-500/30': variant === 'secondary',
@@ -26,7 +31,9 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
           className
         )}
         {...props}
-      />
+      >
+        {children}
+      </motion.button>
     );
   }
 );

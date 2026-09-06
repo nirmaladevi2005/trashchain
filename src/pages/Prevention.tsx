@@ -16,6 +16,10 @@ import { cn } from '../utils/cn';
 import type { TransformationIdea, TransformationStatus } from '../types';
 import { useAuth } from '../hooks/useAuth';
 
+import { hotspotService, type FirestoreHotspot } from '../services/hotspotService';
+import { missionService, type FirestoreMission } from '../services/missionService';
+import { PageTransition } from '../components/ui/PageTransition';
+
 const TRANSFORMATION_STAGES: { id: TransformationStatus; label: string }[] = [
   { id: 'ai_recommendation', label: 'AI Recommendation' },
   { id: 'community_voting', label: 'Community Voting' },
@@ -30,8 +34,20 @@ export default function Prevention() {
   const navigate = useNavigate();
   const { isDemo } = useAuth();
 
-  const mission = missions.find(m => m.id === id) || missions[1] || missions[0];
-  const hotspot = hotspots.find(h => h.id === mission?.hotspotId) || hotspots[1] || hotspots[0];
+  const [allMissions, setAllMissions] = useState<FirestoreMission[]>([]);
+  const [allHotspots, setAllHotspots] = useState<FirestoreHotspot[]>([]);
+
+  useEffect(() => {
+    const unsubMissions = missionService.subscribeToMissions((mList) => setAllMissions(mList));
+    const unsubHotspots = hotspotService.subscribeToHotspots((hList) => setAllHotspots(hList));
+    return () => {
+      unsubMissions();
+      unsubHotspots();
+    };
+  }, []);
+
+  const mission = allMissions.find(m => m.id === id) || missions.find(m => m.id === id) || missions[0];
+  const hotspot = allHotspots.find(h => h.id === mission?.hotspotId || h.id === id) || hotspots.find(h => h.id === mission?.hotspotId || h.id === id) || hotspots[0];
 
   const [isAnalyzing, setIsAnalyzing] = useState(true);
   const [analysisStep, setAnalysisStep] = useState(0);
@@ -87,7 +103,8 @@ export default function Prevention() {
   };
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-neutral-100 font-sans pb-28">
+    <PageTransition>
+      <div className="min-h-screen bg-neutral-950 text-neutral-100 font-sans pb-28">
       
       {/* Toast Micro-Interaction */}
       <TransformationReveal
@@ -608,5 +625,6 @@ export default function Prevention() {
 
       </div>
     </div>
+    </PageTransition>
   );
 }

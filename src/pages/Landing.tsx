@@ -14,6 +14,8 @@ import { CustomCursor } from '../components/ui/CustomCursor';
 import { ScrollReveal, StaggerContainer, StaggerItem } from '../components/ui/ScrollReveal';
 import { useAuth } from '../hooks/useAuth';
 import { cn } from '../utils/cn';
+import { PageTransition } from '../components/ui/PageTransition';
+import { ScrollProgress } from '../components/ui/ScrollProgress';
 
 // 6-Step Journey Data
 const JOURNEY_STEPS = [
@@ -78,7 +80,9 @@ export default function Landing() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F6F8F5] dark:bg-[#0A0F0D] text-[#0F172A] dark:text-[#F8FAFC] font-sans selection:bg-emerald-500 selection:text-white relative overflow-x-hidden transition-colors duration-200">
+    <PageTransition>
+      <ScrollProgress />
+      <div className="min-h-screen bg-[#F6F8F5] dark:bg-[#0A0F0D] text-[#0F172A] dark:text-[#F8FAFC] font-sans selection:bg-emerald-500 selection:text-white relative overflow-x-hidden transition-colors duration-200">
       <CustomCursor />
       
       {/* 1. LANDING PAGE TOP NAVIGATION BAR (ONLY ON LANDING /) */}
@@ -778,5 +782,6 @@ export default function Landing() {
       </footer>
 
     </div>
+    </PageTransition>
   );
 }

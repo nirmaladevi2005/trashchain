@@ -18,6 +18,9 @@ import { ScoreReveal } from '../components/ui/impact/ImpactMoments';
 import { SatelliteMap } from '../components/shared/SatelliteMap';
 import { useAuth } from '../hooks/useAuth';
 import { hotspotService, type FirestoreHotspot } from '../services/hotspotService';
+import { missionService, type FirestoreMission } from '../services/missionService';
+import { PageTransition } from '../components/ui/PageTransition';
+import { AnimatedCounter } from '../components/ui/AnimatedCounter';
 
 // Staggered animation variants
 const containerVariants = {
@@ -37,18 +40,40 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const { user, isDemo } = useAuth();
   const [hotspotsList, setHotspotsList] = useState<FirestoreHotspot[]>([]);
+  const [missionsList, setMissionsList] = useState<FirestoreMission[]>([]);
 
   useEffect(() => {
-    const unsubscribe = hotspotService.subscribeToHotspots((data) => {
+    const unsubscribeHotspots = hotspotService.subscribeToHotspots((data) => {
       setHotspotsList(data);
     });
-    return () => unsubscribe();
+
+    const unsubscribeMissions = missionService.subscribeToMissions((mData) => {
+      setMissionsList(mData);
+    });
+
+    return () => {
+      unsubscribeHotspots();
+      unsubscribeMissions();
+    };
   }, []);
 
   const rawHotspots = hotspotsList.length > 0 ? hotspotsList : mockHotspots;
   // Exclude synthetic TEST DATA from real/demo metrics
   const displayHotspots = rawHotspots.filter((h: any) => !h.id?.includes('SMOKETEST') && !h.reporterId?.includes('smoketest') && h.dataSource !== 'TEST DATA');
-  const activeMissions = missions.filter(m => !m.id.includes('SMOKETEST') && (m.status === 'active' || m.status === 'upcoming'));
+  const allMissions = missionsList.length > 0 ? missionsList : missions;
+  const activeMissions = allMissions
+    .filter(m => !m.id.includes('SMOKETEST') && (m.status === 'active' || m.status === 'upcoming'))
+    .sort((a, b) => {
+      if (a.status === 'active' && b.status !== 'active') return -1;
+      if (a.status !== 'active' && b.status === 'active') return 1;
+      const dateA = new Date((a as any).date || (a as any).createdAt || 0).getTime();
+      const dateB = new Date((b as any).date || (b as any).createdAt || 0).getTime();
+      return dateB - dateA;
+    });
+
+  // Maximum 2 preview items on Dashboard
+  const previewMissions = activeMissions.slice(0, 2);
+  const previewActivities = recentActivities.slice(0, 2);
   const recentRecovery = recoveryTimelines[0];
 
   const displayName = user?.displayName || mockUser.name;
@@ -56,19 +81,22 @@ export default function Dashboard() {
   const impactScore = user?.impactScore ?? mockUser.environmentalScore;
   const dataSource = user?.dataSource || (isDemo ? 'DEMO DATA' : 'FIELD DATA');
 
-  // Stats calculation
+  // Stats calculation dynamically derived from central dataset
   const totalHotspots = displayHotspots.length;
-  const criticalHotspots = displayHotspots.filter((h: any) => h.severity === 'critical').length;
-  const activeMissionsCount = activeMissions.length;
-  const recoveredCount = displayHotspots.filter((h: any) => h.status === 'cleaned' || h.status === 'transformed').length;
+  const reportedHotspotsCount = displayHotspots.filter((h: any) => h.status === 'reported' || h.status === 'active').length;
+  const missionAssignedCount = displayHotspots.filter((h: any) => h.status === 'mission_active' || h.status === 'mission_assigned' || h.status === 'in_progress').length;
+  const inProgressCount = displayHotspots.filter((h: any) => h.status === 'in_progress').length;
+  const clearedCount = displayHotspots.filter((h: any) => h.status === 'cleaned' || h.status === 'cleared').length;
+  const transformedCount = displayHotspots.filter((h: any) => h.status === 'transformed' || h.status === 'recovered').length;
 
   return (
-    <motion.div 
-      className="p-4 sm:p-6 md:p-8 max-w-7xl mx-auto space-y-8 bg-[#F6F8F5] dark:bg-[#0A0F0D] text-[#0F172A] dark:text-[#F8FAFC] min-h-screen font-sans transition-colors duration-200"
-      variants={containerVariants}
-      initial="hidden"
-      animate="show"
-    >
+    <PageTransition>
+      <motion.div
+        className="p-4 sm:p-6 md:p-8 max-w-7xl mx-auto space-y-8 bg-[#F6F8F5] dark:bg-[#0A0F0D] text-[#0F172A] dark:text-[#F8FAFC] min-h-screen font-sans transition-colors duration-200"
+        variants={containerVariants}
+        initial="hidden"
+        animate="show"
+      >
       
       {/* 1. HERO / ENVIRONMENTAL IMPACT HEADER */}
       <motion.section 
@@ -141,7 +169,7 @@ export default function Dashboard() {
           <h2 className="text-lg font-bold text-[#0F172A] dark:text-white flex items-center gap-2 font-display">
             <Activity className="w-5 h-5 text-emerald-600 dark:text-emerald-400" /> Impact Overview
           </h2>
-          <span className="text-xs font-mono text-[#64748B] dark:text-[#94A3B8]">Strict Data Segregation</span>
+          <span className="text-xs font-mono text-[#64748B] dark:text-[#94A3B8]">Central Hotspot Dataset</span>
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -152,7 +180,7 @@ export default function Dashboard() {
             </div>
             <div>
               <div className="text-3xl font-black font-mono text-[#0F172A] dark:text-white">
-                <ScoreReveal value={user?.hotspotsReported ?? mockUser.hotspotsReported} />
+                <AnimatedCounter value={totalHotspots} />
               </div>
               <p className="text-xs font-medium text-[#64748B] dark:text-[#94A3B8] mt-0.5">Hotspots Reported</p>
             </div>
@@ -165,7 +193,7 @@ export default function Dashboard() {
             </div>
             <div>
               <div className="text-3xl font-black font-mono text-[#0F172A] dark:text-white">
-                <ScoreReveal value={user?.missionsCompleted ?? mockUser.missionsCompleted} />
+                <AnimatedCounter value={activeMissions.length} />
               </div>
               <p className="text-xs font-medium text-[#64748B] dark:text-[#94A3B8] mt-0.5">Cleanup Missions</p>
             </div>
@@ -178,8 +206,7 @@ export default function Dashboard() {
             </div>
             <div>
               <div className="text-3xl font-black font-mono text-emerald-600 dark:text-emerald-400 flex items-baseline gap-1">
-                <ScoreReveal value={user?.wasteRemovedKg ?? mockUser.wasteRemovedKg} />
-                <span className="text-sm font-sans text-[#64748B] dark:text-[#94A3B8] font-normal">kg</span>
+                <AnimatedCounter value={user?.wasteRemovedKg ?? (clearedCount * 450 + 400)} suffix=" kg" />
               </div>
               <p className="text-xs font-medium text-[#64748B] dark:text-[#94A3B8] mt-0.5">Waste Removed</p>
             </div>
@@ -192,7 +219,7 @@ export default function Dashboard() {
             </div>
             <div>
               <div className="text-3xl font-black font-mono text-emerald-600 dark:text-emerald-400">
-                <ScoreReveal value={user?.locationsRecovered ?? mockUser.locationsRecovered} />
+                <ScoreReveal value={clearedCount + transformedCount} />
               </div>
               <p className="text-xs font-medium text-[#64748B] dark:text-[#94A3B8] mt-0.5">Locations Recovered</p>
             </div>
@@ -215,33 +242,33 @@ export default function Dashboard() {
         {/* Visual Progress Journey */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3 font-mono text-xs">
           <div className="p-3.5 bg-coral-950/40 border border-coral-500/30 rounded-xl space-y-1">
-            <span className="text-[10px] text-coral-400 font-bold uppercase">1. Polluted</span>
-            <div className="text-2xl font-black text-coral-400">{criticalHotspots}</div>
-            <span className="text-[10px] text-neutral-400 block">Critical Hotspots</span>
+            <span className="text-[10px] text-coral-400 font-bold uppercase">1. Reported / Open</span>
+            <div className="text-2xl font-black text-coral-400">{reportedHotspotsCount}</div>
+            <span className="text-[10px] text-neutral-400 block">Needs Attention</span>
           </div>
 
           <div className="p-3.5 bg-amber-950/40 border border-amber-500/30 rounded-xl space-y-1">
-            <span className="text-[10px] text-amber-400 font-bold uppercase">2. Active Mission</span>
-            <div className="text-2xl font-black text-amber-400">{activeMissionsCount}</div>
+            <span className="text-[10px] text-amber-400 font-bold uppercase">2. Mission Assigned</span>
+            <div className="text-2xl font-black text-amber-400">{missionAssignedCount}</div>
             <span className="text-[10px] text-neutral-400 block">In Mobilization</span>
           </div>
 
           <div className="p-3.5 bg-yellow-950/40 border border-yellow-500/30 rounded-xl space-y-1">
-            <span className="text-[10px] text-yellow-400 font-bold uppercase">3. Cleaned</span>
-            <div className="text-2xl font-black text-yellow-400">{recoveredCount}</div>
-            <span className="text-[10px] text-neutral-400 block">Debris Removed</span>
+            <span className="text-[10px] text-yellow-400 font-bold uppercase">3. In Progress</span>
+            <div className="text-2xl font-black text-yellow-400">{inProgressCount}</div>
+            <span className="text-[10px] text-neutral-400 block">Active Cleanup</span>
           </div>
 
           <div className="p-3.5 bg-fresh-950/40 border border-fresh-500/30 rounded-xl space-y-1">
-            <span className="text-[10px] text-fresh-400 font-bold uppercase">4. Verified</span>
-            <div className="text-2xl font-black text-fresh-400">1</div>
-            <span className="text-[10px] text-neutral-400 block">Pine St Lot</span>
+            <span className="text-[10px] text-fresh-400 font-bold uppercase">4. Cleared</span>
+            <div className="text-2xl font-black text-fresh-400">{clearedCount}</div>
+            <span className="text-[10px] text-neutral-400 block">Debris Removed</span>
           </div>
 
           <div className="p-3.5 bg-purple-950/40 border border-purple-500/30 rounded-xl space-y-1">
-            <span className="text-[10px] text-purple-400 font-bold uppercase">5. Protected</span>
-            <div className="text-2xl font-black text-purple-400">1</div>
-            <span className="text-[10px] text-neutral-400 block">Mini Garden Hub</span>
+            <span className="text-[10px] text-purple-400 font-bold uppercase">5. Transformed</span>
+            <div className="text-2xl font-black text-purple-400">{transformedCount}</div>
+            <span className="text-[10px] text-purple-400 block">Protected Hubs</span>
           </div>
         </div>
       </motion.section>
@@ -274,15 +301,24 @@ export default function Dashboard() {
         {/* 4. ACTIVE MISSIONS */}
         <motion.section variants={itemVariants} className="space-y-4">
           <div className="flex items-center justify-between border-b border-neutral-850 pb-3">
-            <h2 className="text-xl font-bold text-white flex items-center gap-2">
-              <Target className="w-5 h-5 text-yellow-400" /> Action Needed Nearby
-            </h2>
-            <Link to="/missions" className="text-xs font-bold text-fresh-400 hover:underline">View All</Link>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                <Target className="w-5 h-5 text-yellow-400" /> Action Needed Nearby
+              </h2>
+              {activeMissions.length > 0 && (
+                <span className="text-[10px] font-mono bg-yellow-500/10 text-yellow-400 border border-yellow-500/30 px-2 py-0.5 rounded font-bold">
+                  Showing {previewMissions.length} of {activeMissions.length}
+                </span>
+              )}
+            </div>
+            <Link to="/missions" className="text-xs font-bold text-fresh-400 hover:underline flex items-center gap-1">
+              View All <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
           </div>
 
           <div className="space-y-4">
-            {activeMissions.length > 0 ? (
-              activeMissions.map(mission => {
+            {previewMissions.length > 0 ? (
+              previewMissions.map(mission => {
                 const hotspot = displayHotspots.find(h => h.id === mission.hotspotId);
                 return (
                   <Card key={mission.id} className="bg-neutral-900 border-neutral-800 text-white p-5 hover:border-forest-500/50 transition-all space-y-3">
@@ -335,16 +371,35 @@ export default function Dashboard() {
                 </Button>
               </div>
             )}
+
+            {/* NAVIGATION BUTTON TO MISSIONS */}
+            {activeMissions.length > 0 && (
+              <div className="pt-2">
+                <Button
+                  onClick={() => navigate('/missions')}
+                  className="w-full bg-forest-600 hover:bg-forest-700 text-white font-bold text-xs py-3.5 rounded-xl flex items-center justify-center gap-2 shadow-md transition-all border border-fresh-500/30"
+                >
+                  View All Missions <ArrowRight className="w-4 h-4" />
+                </Button>
+              </div>
+            )}
           </div>
         </motion.section>
 
         {/* 5. RECENT RECOVERIES (BEFORE / AFTER CARDS) */}
         <motion.section variants={itemVariants} className="space-y-4">
           <div className="flex items-center justify-between border-b border-neutral-850 pb-3">
-            <h2 className="text-xl font-bold text-white flex items-center gap-2">
-              <ShieldCheck className="w-5 h-5 text-fresh-400" /> Recent Recoveries
-            </h2>
-            <Link to="/timeline" className="text-xs font-bold text-fresh-400 hover:underline">View Timeline</Link>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                <ShieldCheck className="w-5 h-5 text-fresh-400" /> Recent Recoveries
+              </h2>
+              <span className="text-[10px] font-mono bg-fresh-500/10 text-fresh-400 border border-fresh-500/30 px-2 py-0.5 rounded font-bold">
+                Preview (Top 2 Max)
+              </span>
+            </div>
+            <Link to="/timeline" className="text-xs font-bold text-fresh-400 hover:underline flex items-center gap-1">
+              View Timeline <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
           </div>
 
           <Card className="bg-neutral-900 border-neutral-800 text-white overflow-hidden space-y-4">
@@ -386,10 +441,10 @@ export default function Dashboard() {
 
               <Button 
                 variant="outline" 
-                onClick={() => navigate('/timeline')}
-                className="w-full border-neutral-700 bg-neutral-850 hover:bg-neutral-800 text-white text-xs font-bold py-2.5"
+                onClick={() => navigate('/missions')}
+                className="w-full border-neutral-700 bg-neutral-850 hover:bg-neutral-800 text-white text-xs font-bold py-3 flex items-center justify-center gap-2 rounded-xl transition-all"
               >
-                View Recovery Timeline <ArrowUpRight className="w-4 h-4 ml-1" />
+                View Recovery Progress <ArrowRight className="w-4 h-4" />
               </Button>
             </div>
           </Card>
@@ -505,11 +560,11 @@ export default function Dashboard() {
             <h3 className="font-bold text-white text-base flex items-center gap-2">
               <CalendarClock className="w-4 h-4 text-purple-400" /> Community Pulse
             </h3>
-            <span className="text-[10px] font-mono text-neutral-400">Live Activity</span>
+            <span className="text-[10px] font-mono text-neutral-400">Top 2 Recent</span>
           </div>
 
           <div className="space-y-4">
-            {recentActivities.map((act) => (
+            {previewActivities.map((act) => (
               <div key={act.id} className="flex items-start gap-3 text-xs">
                 <img src={act.userAvatar} alt={act.userName} className="w-8 h-8 rounded-full object-cover shrink-0 border border-neutral-700" />
                 <div className="flex-1 min-w-0">
@@ -526,5 +581,6 @@ export default function Dashboard() {
       </div>
 
     </motion.div>
+    </PageTransition>
   );
 }

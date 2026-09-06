@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Sun, Moon, Shield, Eye, Lock, User, Mail, Award, Check } from 'lucide-react';
+import { X, Sun, Moon, Shield, Eye, Lock, User, Mail, Award, Check, AlertTriangle } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
 import { cn } from '../../utils/cn';
+import { authService } from '../../services/authService';
 import type { UserProfile } from '../../services/authService';
 
 interface SettingsModalProps {
@@ -15,20 +16,39 @@ interface SettingsModalProps {
 
 export function SettingsModal({ isOpen, onClose, user }: SettingsModalProps) {
   const { theme, setTheme } = useTheme();
-  const [isPublicProfile, setIsPublicProfile] = useState<boolean>(true);
+  const [isPublicProfile, setIsPublicProfile] = useState<boolean>(user?.publicProfile ?? false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Close on Escape key press
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose();
-      }
-    };
-    if (isOpen) {
-      window.addEventListener('keydown', handleKeyDown);
+    if (user) {
+      setIsPublicProfile(user.publicProfile ?? false);
     }
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
+    setErrorMsg(null);
+  }, [user, isOpen]);
+
+  const handleTogglePublicProfile = async () => {
+    setErrorMsg(null);
+    const nextVal = !isPublicProfile;
+    setIsPublicProfile(nextVal);
+    try {
+      await authService.updateUserProfile({ publicProfile: nextVal });
+    } catch (err: any) {
+      console.error('[SettingsModal] Failed to update public profile:', err);
+      setIsPublicProfile(!nextVal);
+      setErrorMsg(err?.message || 'Failed to update public profile setting.');
+    }
+  };
+
+  const handleSaveAndDone = async () => {
+    setErrorMsg(null);
+    try {
+      await authService.updateUserProfile({ publicProfile: isPublicProfile });
+      onClose();
+    } catch (err: any) {
+      console.error('[SettingsModal] Failed to save preferences:', err);
+      setErrorMsg(err?.message || 'Failed to save preferences.');
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -72,6 +92,13 @@ export function SettingsModal({ isOpen, onClose, user }: SettingsModalProps) {
           {/* MODAL BODY */}
           <div className="p-6 space-y-6 max-h-[80vh] overflow-y-auto">
             
+            {errorMsg && (
+              <div className="p-3 bg-red-50 dark:bg-coral-950/60 border border-coral-200 dark:border-coral-500/40 rounded-xl flex items-center gap-2 text-coral-800 dark:text-coral-300 text-xs">
+                <AlertTriangle className="w-4 h-4 text-coral-500 shrink-0" />
+                <span>{errorMsg}</span>
+              </div>
+            )}
+
             {/* 1. APPEARANCE SETTINGS */}
             <div className="space-y-3">
               <label className="text-xs font-mono font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
@@ -171,7 +198,7 @@ export function SettingsModal({ isOpen, onClose, user }: SettingsModalProps) {
 
                 <button
                   type="button"
-                  onClick={() => setIsPublicProfile(!isPublicProfile)}
+                  onClick={handleTogglePublicProfile}
                   className={cn(
                     "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-forest-500",
                     isPublicProfile ? "bg-forest-600 dark:bg-fresh-500" : "bg-neutral-300 dark:bg-neutral-700"
@@ -194,7 +221,7 @@ export function SettingsModal({ isOpen, onClose, user }: SettingsModalProps) {
 
           {/* MODAL FOOTER */}
           <div className="p-4 bg-neutral-50 dark:bg-neutral-950 border-t border-neutral-100 dark:border-neutral-800 flex justify-end">
-            <Button onClick={onClose} className="bg-neutral-900 dark:bg-neutral-800 hover:bg-neutral-800 text-white font-bold text-xs px-6 py-2.5">
+            <Button onClick={handleSaveAndDone} className="bg-neutral-900 dark:bg-neutral-800 hover:bg-neutral-800 text-white font-bold text-xs px-6 py-2.5">
               Done & Save Preferences
             </Button>
           </div>

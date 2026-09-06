@@ -11,6 +11,7 @@ import {
 import { hotspotService, type FirestoreHotspot } from '../services/hotspotService';
 import { missionService, type FirestoreMission } from '../services/missionService';
 import { useAuth } from '../hooks/useAuth';
+import { PageTransition } from '../components/ui/PageTransition';
 import { cn } from '../utils/cn';
 
 type FilterType = 'all' | 'critical' | 'reported' | 'mission' | 'recovered' | 'transformed';
@@ -77,17 +78,20 @@ export default function Explore() {
       // Filter tab logic
       if (activeFilter === 'critical' && h.severity !== 'critical') return false;
       if (activeFilter === 'reported' && h.status !== 'reported') return false;
-      if (activeFilter === 'mission' && h.status !== 'mission_active') return false;
-      if (activeFilter === 'recovered' && h.status !== 'cleaned') return false;
+      if (activeFilter === 'mission' && h.status !== 'mission_active' && h.status !== 'mission_assigned' && h.status !== 'in_progress') return false;
+      if (activeFilter === 'recovered' && h.status !== 'cleaned' && h.status !== 'cleared' && h.status !== 'recovered') return false;
       if (activeFilter === 'transformed' && h.status !== 'transformed') return false;
 
       // Search query logic
       if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
+        const q = searchQuery.toLowerCase().trim();
         const matchTitle = h.title?.toLowerCase().includes(q);
         const matchLocation = h.location?.toLowerCase().includes(q);
         const matchCategory = h.category?.toLowerCase().includes(q);
-        return matchTitle || matchLocation || matchCategory;
+        const matchStatus = h.status?.toLowerCase().includes(q);
+        const matchSeverity = h.severity?.toLowerCase().includes(q);
+        const matchDescription = h.description?.toLowerCase().includes(q);
+        return matchTitle || matchLocation || matchCategory || matchStatus || matchSeverity || matchDescription;
       }
 
       return true;
@@ -98,17 +102,18 @@ export default function Explore() {
   const stats = useMemo(() => {
     return {
       active: hotspotsList.filter(h => h.status === 'reported' || h.severity === 'critical').length,
-      missions: hotspotsList.filter(h => h.status === 'mission_active').length,
-      recovered: hotspotsList.filter(h => h.status === 'cleaned').length,
+      missions: hotspotsList.filter(h => h.status === 'mission_active' || h.status === 'mission_assigned' || h.status === 'in_progress').length,
+      recovered: hotspotsList.filter(h => h.status === 'cleaned' || h.status === 'cleared' || h.status === 'recovered').length,
       transformed: hotspotsList.filter(h => h.status === 'transformed').length,
     };
   }, [hotspotsList]);
 
   return (
-    <div className="min-h-screen bg-[#F6F8F5] dark:bg-[#0A0F0D] text-[#0F172A] dark:text-[#F8FAFC] flex flex-col font-sans transition-colors duration-200">
+    <PageTransition className="h-[calc(100vh-6rem)] max-h-[calc(100vh-6rem)]">
+      <div className="h-full w-full bg-[#F6F8F5] dark:bg-[#0A0F0D] text-[#0F172A] dark:text-[#F8FAFC] flex flex-col font-sans overflow-hidden transition-colors duration-200">
       
       {/* 1. EXPLORE PAGE HEADER */}
-      <header className="bg-white dark:bg-[#121915] border-b border-[#E2E8F0] dark:border-[#1E2C24] px-4 py-5 md:px-8">
+      <header className="bg-white dark:bg-[#121915] border-b border-[#E2E8F0] dark:border-[#1E2C24] px-4 py-4 md:px-8 shrink-0">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
@@ -118,16 +123,16 @@ export default function Explore() {
               <span className="text-xs font-mono text-neutral-500">|</span>
               <span className="text-xs font-mono text-neutral-400">{isDemo ? 'DEMO MODE' : 'FIREBASE CONNECTED'}</span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight flex items-center gap-2">
-              <Compass className="w-7 h-7 text-fresh-400" /> Explore the Recovery Network
+            <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2">
+              <Compass className="w-6 h-6 text-fresh-400" /> Explore the Recovery Network
             </h1>
-            <p className="text-xs sm:text-sm text-neutral-400 max-w-2xl leading-relaxed">
+            <p className="text-xs text-neutral-400 max-w-2xl leading-relaxed">
               See polluted spaces, active cleanup missions, verified recoveries, and community transformations in real time.
             </p>
           </div>
 
           {/* Quick Network Stats */}
-          <div className="flex items-center gap-3 font-mono text-xs bg-neutral-900 border border-neutral-800 p-3 rounded-2xl shrink-0">
+          <div className="flex items-center gap-3 font-mono text-xs bg-neutral-900 border border-neutral-800 p-2.5 rounded-2xl shrink-0">
             <div className="text-center px-2">
               <span className="text-[10px] text-coral-400 block uppercase">Active</span>
               <span className="font-bold text-white text-base">{stats.active}</span>
@@ -152,7 +157,7 @@ export default function Explore() {
       </header>
 
       {/* SEARCH AND FILTER BAR */}
-      <div className="bg-neutral-900/90 border-b border-neutral-850 px-4 py-3 md:px-8 z-20 backdrop-blur-md">
+      <div className="bg-neutral-900/90 border-b border-neutral-850 px-4 py-2.5 md:px-8 z-20 backdrop-blur-md shrink-0">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
           
           {/* Search Field */}
@@ -163,7 +168,7 @@ export default function Explore() {
               placeholder="Search a location, waste type, or hotspot title..." 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-neutral-950 border border-neutral-800 text-xs text-white pl-10 pr-4 py-2.5 rounded-xl focus:outline-none focus:border-forest-500 placeholder:text-neutral-500"
+              className="w-full bg-neutral-950 border border-neutral-800 text-xs text-white pl-10 pr-4 py-2 rounded-xl focus:outline-none focus:border-forest-500 placeholder:text-neutral-500"
             />
             {searchQuery && (
               <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-neutral-500 text-xs">
@@ -204,10 +209,10 @@ export default function Explore() {
       </div>
 
       {/* 2. MAP MAIN AREA AND DETAILED SIDE PANEL */}
-      <div className="flex-1 flex flex-col md:flex-row relative overflow-hidden h-[calc(100vh-160px)]">
+      <div className="flex-1 flex flex-col md:flex-row relative overflow-hidden min-h-0">
         
         {/* Real Leaflet Satellite Map Layer */}
-        <div className="flex-1 h-full p-2 sm:p-4 bg-neutral-50 dark:bg-neutral-950 relative">
+        <div className="flex-1 h-full min-h-0 p-2 sm:p-3 bg-neutral-50 dark:bg-neutral-950 relative overflow-hidden">
           <SatelliteMap 
             items={filteredHotspots} 
             selectedHotspotId={selectedHotspot?.id}
@@ -216,10 +221,10 @@ export default function Explore() {
         </div>
 
         {/* Desktop Side List & Selected Hotspot Detail Panel */}
-        <div className="w-full md:w-96 bg-neutral-950 border-t md:border-t-0 md:border-l border-neutral-850 flex flex-col h-72 md:h-full shrink-0">
+        <div className="w-full md:w-96 bg-neutral-950 border-t md:border-t-0 md:border-l border-neutral-850 flex flex-col h-64 md:h-full shrink-0 min-h-0 overflow-hidden">
           
           {/* List Header */}
-          <div className="p-4 border-b border-neutral-850 flex items-center justify-between">
+          <div className="p-3 border-b border-neutral-850 flex items-center justify-between shrink-0">
             <h2 className="text-sm font-bold text-white flex items-center gap-2">
               <MapPin className="w-4 h-4 text-fresh-400" /> Hotspots ({filteredHotspots.length})
             </h2>
@@ -229,7 +234,7 @@ export default function Explore() {
           </div>
 
           {/* List items / Selected Hotspot view */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-3">
+          <div className="flex-1 overflow-y-auto min-h-0 p-3 space-y-3">
             {selectedHotspot ? (
               /* Selected Hotspot Detail Card */
               <motion.div 
@@ -340,14 +345,30 @@ export default function Explore() {
               </motion.div>
             ) : (
               /* Hotspot List Items */
-              filteredHotspots.map(hotspot => {
-                const dataSource = hotspot.dataSource || 'DEMO DATA';
-                return (
-                  <Card 
-                    key={hotspot.id} 
-                    onClick={() => setSelectedHotspot(hotspot)}
-                    className="bg-neutral-900 border-neutral-800 text-white p-4 cursor-pointer hover:border-forest-500/50 transition-all space-y-2"
-                  >
+              <motion.div
+                variants={{
+                  hidden: { opacity: 0 },
+                  show: { opacity: 1, transition: { staggerChildren: 0.08 } }
+                }}
+                initial="hidden"
+                animate="show"
+                className="space-y-3"
+              >
+                {filteredHotspots.map(hotspot => {
+                  const dataSource = hotspot.dataSource || 'DEMO DATA';
+                  return (
+                    <motion.div
+                      key={hotspot.id}
+                      variants={{
+                        hidden: { opacity: 0, y: 16 },
+                        show: { opacity: 1, y: 0, transition: { duration: 0.35 } }
+                      }}
+                      whileHover={{ y: -4, scale: 1.01, transition: { duration: 0.18 } }}
+                    >
+                      <Card
+                        onClick={() => setSelectedHotspot(hotspot)}
+                        className="bg-neutral-900 border-neutral-800 text-white p-4 cursor-pointer hover:border-forest-500/50 transition-all space-y-2"
+                      >
                     <div className="flex justify-between items-start">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <h3 className="font-bold text-white text-sm line-clamp-1">{hotspot.title}</h3>
@@ -375,9 +396,11 @@ export default function Explore() {
                         {hotspot.status.replace('_', ' ')}
                       </span>
                     </div>
-                  </Card>
-                );
-              })
+                      </Card>
+                    </motion.div>
+                  );
+                })}
+              </motion.div>
             )}
           </div>
 
@@ -386,5 +409,6 @@ export default function Explore() {
       </div>
 
     </div>
+    </PageTransition>
   );
 }

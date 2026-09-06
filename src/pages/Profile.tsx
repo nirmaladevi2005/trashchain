@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Settings, Leaf, Calendar, LogOut, 
@@ -13,14 +13,10 @@ import { SettingsModal } from '../components/profile/SettingsModal';
 import { useAuth } from '../hooks/useAuth';
 import { authService } from '../services/authService';
 import { storageService } from '../services/storageService';
-
-const ACHIEVEMENTS = [
-  { id: 'ach-1', title: 'First Recovery', desc: 'Verified cleanup of your first polluted site.', icon: '🛡️', unlocked: true },
-  { id: 'ach-2', title: 'First Cleanup', desc: 'Completed a community cleanup mission.', icon: '🧹', unlocked: true },
-  { id: 'ach-3', title: '5 Places Recovered', desc: 'Helped recover 5 distinct pollution hotspots.', icon: '🌿', unlocked: true },
-  { id: 'ach-4', title: 'Community Mobilizer', desc: 'Mobilized more than 10 volunteers on a mission.', icon: '👥', unlocked: true },
-  { id: 'ach-5', title: 'Monitoring Steward', desc: 'Completed 30-day post-cleanup site inspections.', icon: '👁️', unlocked: true }
-];
+import { hotspotService } from '../services/hotspotService';
+import { missionService } from '../services/missionService';
+import { getEarnedBadges } from '../utils/badgeUtils';
+import { PageTransition } from '../components/ui/PageTransition';
 
 function getInitials(name: string): string {
   if (!name) return 'TC';
@@ -40,6 +36,47 @@ export default function Profile() {
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [avatarError, setAvatarError] = useState<string | null>(null);
+
+  const [userHotspotsCount, setUserHotspotsCount] = useState<number>(user?.hotspotsReported || 4);
+  const [userMissionsCount, setUserMissionsCount] = useState<number>(user?.missionsCompleted || 6);
+  const [recoveredCount, setRecoveredCount] = useState<number>(user?.locationsRecovered || 3);
+  const [recoveryChainList, setRecoveryChainList] = useState<{ id: string; title: string }[]>([
+    { id: 'l-1', title: 'Pine Street Lot' },
+    { id: 'l-2', title: 'Oak Alley' },
+    { id: 'l-3', title: 'Riverbed Clean' },
+    { id: 'l-4', title: 'East Park Spot' }
+  ]);
+
+  useEffect(() => {
+    const unsubH = hotspotService.subscribeToHotspots((hotspots) => {
+      const myUid = user?.uid || 'demo-user-1';
+      const myHotspots = hotspots.filter(h => h.reporterId === myUid || h.reportedBy === myUid);
+      setUserHotspotsCount(myHotspots.length || user?.hotspotsReported || 4);
+
+      const recovered = hotspots.filter(h =>
+        (h.reporterId === myUid || h.reportedBy === myUid) &&
+        (h.status === 'cleared' || h.status === 'recovered' || h.status === 'transformed' || h.status === 'cleaned')
+      );
+      setRecoveredCount(recovered.length || user?.locationsRecovered || 3);
+
+      if (recovered.length > 0) {
+        setRecoveryChainList(recovered.map(r => ({ id: r.id, title: r.title })));
+      }
+    });
+
+    const unsubM = missionService.subscribeToMissions((missions) => {
+      const myUid = user?.uid || 'demo-user-1';
+      const myMissions = missions.filter(m =>
+        m.organizerId === myUid || (m.volunteersRegistered && m.volunteersRegistered.includes(myUid))
+      );
+      setUserMissionsCount(myMissions.length || user?.missionsCompleted || 6);
+    });
+
+    return () => {
+      unsubH();
+      unsubM();
+    };
+  }, [user]);
 
   const handleLogout = async () => {
     await logout();
@@ -91,12 +128,12 @@ export default function Profile() {
   const roleDisplay = user?.role || 'COMMUNITY LEADER';
   const orgDisplay = user?.organization ? ` (${user.organization})` : ' (TrashChain Local)';
   const impactScore = user?.impactScore ?? mockUser.environmentalScore;
-  const missionsCount = user?.missionsCompleted ?? mockUser.missionsCompleted;
   const joinDate = user?.createdAt || mockUser.joinDate;
   const dataSource = user?.dataSource || (isDemo ? 'DEMO DATA' : 'FIELD DATA');
 
   return (
-    <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 text-neutral-900 dark:text-neutral-100 font-sans pb-28 transition-colors duration-200">
+    <PageTransition>
+      <div className="min-h-screen bg-neutral-50 dark:bg-neutral-950 text-neutral-900 dark:text-neutral-100 font-sans pb-28 transition-colors duration-200">
       
       {/* SETTINGS MODAL */}
       <SettingsModal 
@@ -125,10 +162,11 @@ export default function Profile() {
                   <Loader2 className="w-6 h-6 text-forest-600 dark:text-fresh-400 animate-spin" />
                   <span className="text-[10px] font-mono text-neutral-500 dark:text-neutral-400 mt-1">{uploadProgress}%</span>
                 </div>
-              ) : user?.photoURL ? (
+              ) : (user?.photoURL && !avatarError) ? (
                 <img 
                   src={user.photoURL} 
                   alt={displayName} 
+                  onError={() => setAvatarError('Failed to load profile photo.')}
                   className="w-20 h-20 sm:w-24 sm:h-24 rounded-full object-cover ring-2 ring-forest-500/40 shadow-2xl"
                 />
               ) : (
@@ -244,37 +282,37 @@ export default function Profile() {
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 font-mono text-xs">
           <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-200 dark:border-neutral-800 space-y-1 shadow-sm">
             <span className="text-neutral-500 dark:text-neutral-400 block text-[9px] uppercase">HOTSPOTS REPORTED</span>
-            <span className="text-2xl font-black text-neutral-900 dark:text-white">4</span>
+            <span className="text-2xl font-black text-neutral-900 dark:text-white">{userHotspotsCount}</span>
             <span className="text-[9px] text-neutral-500 block">USER-REPORTED</span>
           </div>
 
           <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-200 dark:border-neutral-800 space-y-1 shadow-sm">
             <span className="text-neutral-500 dark:text-neutral-400 block text-[9px] uppercase">MISSIONS JOINED</span>
-            <span className="text-2xl font-black text-neutral-900 dark:text-white">6</span>
+            <span className="text-2xl font-black text-neutral-900 dark:text-white">{userMissionsCount}</span>
             <span className="text-[9px] text-neutral-500 block">VOLUNTEER</span>
           </div>
 
           <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-200 dark:border-neutral-800 space-y-1 shadow-sm">
             <span className="text-neutral-500 dark:text-neutral-400 block text-[9px] uppercase">COMPLETED</span>
-            <span className="text-2xl font-black text-forest-600 dark:text-fresh-400">{missionsCount}</span>
+            <span className="text-2xl font-black text-forest-600 dark:text-fresh-400">{userMissionsCount}</span>
             <span className="text-[9px] text-neutral-500 block">VERIFIED</span>
           </div>
 
           <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-200 dark:border-neutral-800 space-y-1 shadow-sm">
             <span className="text-neutral-500 dark:text-neutral-400 block text-[9px] uppercase">RECOVERED</span>
-            <span className="text-2xl font-black text-neutral-900 dark:text-white">3</span>
+            <span className="text-2xl font-black text-neutral-900 dark:text-white">{recoveredCount}</span>
             <span className="text-[9px] text-neutral-500 block">SITES</span>
           </div>
 
           <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-200 dark:border-neutral-800 space-y-1 shadow-sm">
             <span className="text-neutral-500 dark:text-neutral-400 block text-[9px] uppercase">WASTE RECORDED</span>
-            <span className="text-2xl font-black text-neutral-900 dark:text-white">180 kg</span>
+            <span className="text-2xl font-black text-neutral-900 dark:text-white">340 kg</span>
             <span className="text-[9px] text-forest-600 dark:text-fresh-400 block font-bold">MEASURED</span>
           </div>
 
           <div className="bg-white dark:bg-neutral-900 p-4 rounded-2xl border border-neutral-200 dark:border-neutral-800 space-y-1 shadow-sm">
             <span className="text-neutral-500 dark:text-neutral-400 block text-[9px] uppercase">CHAIN LENGTH</span>
-            <span className="text-2xl font-black text-amber-600 dark:text-yellow-400">4 Links</span>
+            <span className="text-2xl font-black text-amber-600 dark:text-yellow-400">{recoveryChainList.length} Links</span>
             <span className="text-[9px] text-neutral-500 block">CONNECTED</span>
           </div>
         </div>
@@ -290,48 +328,80 @@ export default function Profile() {
           </div>
 
           <div className="flex items-center gap-3 overflow-x-auto scrollbar-none py-3 font-mono text-xs">
-            {['Pine Street Lot', 'Oak Alley', 'Riverbed Clean', 'East Park Spot'].map((name, i) => (
-              <div key={i} className="flex items-center gap-3 shrink-0">
+            {recoveryChainList.map((item, i) => (
+              <div key={item.id} className="flex items-center gap-3 shrink-0">
                 <div className="p-3 bg-neutral-50 dark:bg-neutral-950 border border-forest-500/40 rounded-2xl flex items-center gap-2">
                   <ShieldCheck className="w-4 h-4 text-forest-600 dark:text-fresh-400" />
                   <div>
                     <span className="text-neutral-400 text-[9px] block">LINK 0{i + 1}</span>
-                    <span className="font-bold text-neutral-900 dark:text-white text-xs">{name}</span>
+                    <span className="font-bold text-neutral-900 dark:text-white text-xs">{item.title}</span>
                   </div>
                 </div>
-                {i < 3 && <ArrowRight className="w-4 h-4 text-neutral-400 dark:text-neutral-700" />}
+                {i < recoveryChainList.length - 1 && <ArrowRight className="w-4 h-4 text-neutral-400 dark:text-neutral-700" />}
               </div>
             ))}
           </div>
         </Card>
 
         {/* 4. ACHIEVEMENTS */}
-        <Card className="bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800 text-neutral-900 dark:text-white p-6 rounded-3xl space-y-4 shadow-sm">
-          <div className="flex items-center justify-between border-b border-neutral-100 dark:border-neutral-800 pb-3">
-            <div>
-              <h3 className="text-lg font-bold text-neutral-900 dark:text-white">Environmental Impact Badges</h3>
-              <p className="text-xs text-neutral-500 dark:text-neutral-400 font-sans">Badges earned through verified field actions.</p>
-            </div>
-            <Badge variant="success" className="bg-fresh-500/10 text-fresh-700 dark:text-fresh-400 border-fresh-500/30 font-mono text-[10px]">
-              5 UNLOCKED
-            </Badge>
-          </div>
+        {(() => {
+          const userEarnedBadges = getEarnedBadges({
+            reportsSubmitted: userHotspotsCount,
+            missionsCompleted: userMissionsCount,
+            wasteRemovedKg: user?.wasteRemovedKg ?? 340,
+            locationsRecovered: recoveredCount,
+            chainLength: recoveryChainList.length,
+            missionsOrganized: 1,
+            locationsTransformed: 1,
+          });
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-            {ACHIEVEMENTS.map((ach) => (
-              <div key={ach.id} className="p-4 rounded-2xl bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-850 flex items-start gap-3">
-                <span className="text-2xl p-2 bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-800 shadow-sm">{ach.icon}</span>
+          return (
+            <Card className="bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800 text-neutral-900 dark:text-white p-6 rounded-3xl space-y-4 shadow-sm">
+              <div className="flex items-center justify-between border-b border-neutral-100 dark:border-neutral-800 pb-3">
                 <div>
-                  <h4 className="font-bold text-neutral-900 dark:text-white text-sm">{ach.title}</h4>
-                  <p className="text-xs text-neutral-500 dark:text-neutral-400 font-sans mt-0.5">{ach.desc}</p>
+                  <h3 className="text-lg font-bold text-neutral-900 dark:text-white">Environmental Impact Badges</h3>
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400 font-sans">Badges earned through verified field actions.</p>
                 </div>
+                <Badge variant="success" className="bg-fresh-500/10 text-fresh-700 dark:text-fresh-400 border-fresh-500/30 font-mono text-[10px]">
+                  {userEarnedBadges.length} UNLOCKED
+                </Badge>
               </div>
-            ))}
-          </div>
-        </Card>
+
+              {userEarnedBadges.length === 0 ? (
+                <div className="p-8 text-center bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-850 rounded-2xl space-y-2">
+                  <div className="text-3xl">🛡️</div>
+                  <p className="text-sm font-bold text-neutral-700 dark:text-neutral-300">No Environmental Badges Earned Yet</p>
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400 font-mono max-w-sm mx-auto">
+                    Submit reports, participate in cleanup missions, or recover locations to unlock badges.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                  {userEarnedBadges.map((ach) => (
+                    <div key={ach.id} className="p-4 rounded-2xl bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-850 flex items-start gap-3">
+                      <span className="text-2xl p-2.5 bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-800 shadow-sm shrink-0">{ach.icon}</span>
+                      <div className="space-y-1 min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <h4 className="font-bold text-neutral-900 dark:text-white text-sm">{ach.title || ach.name}</h4>
+                          {ach.category && (
+                            <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-forest-500/10 text-forest-700 dark:text-fresh-400 border border-forest-500/20 font-bold">
+                              {ach.category}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-neutral-500 dark:text-neutral-400 font-sans leading-relaxed">{ach.desc || ach.description}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Card>
+          );
+        })()}
 
       </div>
 
     </div>
+    </PageTransition>
   );
 }

@@ -10,6 +10,7 @@ import {
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import type { DataSourceType, AffiliationType, EnvironmentalRoleType } from '../types';
+import { getEarnedBadges, type BadgeItem } from '../utils/badgeUtils';
 
 export type UserRole = 'CITIZEN' | 'VOLUNTEER' | 'ORGANIZATION' | 'ADMIN';
 
@@ -23,6 +24,17 @@ export interface SignUpIdentityData {
   linkedinUrl?: string;
   githubUrl?: string;
   publicProfile?: boolean;
+}
+
+export interface UserActivityItem {
+  id: string;
+  type: 'report' | 'mission_organize' | 'mission_join' | 'cleanup_completed' | 'recovery_verified';
+  title: string;
+  location?: string;
+  timestamp: string;
+  impactBadge?: string;
+  hotspotId?: string;
+  missionId?: string;
 }
 
 export interface PublicProfileData {
@@ -39,17 +51,14 @@ export interface PublicProfileData {
   verifiedRecoveries: number;
   measuredWasteKg: number;
   completedMissions: number;
+  reportsSubmittedCount?: number;
   recoveryChain: {
     id: string;
     title: string;
     recoveredAt: string;
   }[];
-  publicAchievements: {
-    id: string;
-    title: string;
-    desc: string;
-    icon: string;
-  }[];
+  publicAchievements: BadgeItem[];
+  activities?: UserActivityItem[];
   linkedinUrl?: string;
   githubUrl?: string;
   dataSource: DataSourceType;
@@ -96,6 +105,7 @@ const DEMO_USER: UserProfile = {
   publicProfile: false,
 };
 
+const DEMO_USER_STORAGE_KEY = 'trashchain_demo_user_profile';
 const SESSION_STORAGE_DEMO_KEY = 'trashchain_demo_session';
 
 class AuthService {
@@ -111,7 +121,7 @@ class AuthService {
     }
 
     if (this.isDemoSessionActive) {
-      this.currentUser = DEMO_USER;
+      this.currentUser = this.loadDemoUserProfile();
       this.isInitializing = false;
     }
 
@@ -139,6 +149,31 @@ class AuthService {
     }
   }
 
+  private loadDemoUserProfile(): UserProfile {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const saved = localStorage.getItem(DEMO_USER_STORAGE_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          return { ...DEMO_USER, ...parsed };
+        }
+      }
+    } catch (e) {
+      console.warn('[AuthService] Failed to parse demo user profile from localStorage:', e);
+    }
+    return { ...DEMO_USER };
+  }
+
+  private saveDemoUserProfileToStorage(profile: UserProfile) {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        localStorage.setItem(DEMO_USER_STORAGE_KEY, JSON.stringify(profile));
+      }
+    } catch (e) {
+      console.warn('[AuthService] Failed to save demo user profile to localStorage:', e);
+    }
+  }
+
   private notifyListeners() {
     this.listeners.forEach(cb => cb(this.currentUser, this.isInitializing));
   }
@@ -160,7 +195,9 @@ class AuthService {
   }
 
   public getCurrentUser(): UserProfile | null {
-    if (this.isDemoSessionActive) return DEMO_USER;
+    if (this.isDemoSessionActive && !this.currentUser) {
+      this.currentUser = this.loadDemoUserProfile();
+    }
     return this.currentUser;
   }
 
@@ -256,9 +293,10 @@ class AuthService {
     if (typeof window !== 'undefined' && window.sessionStorage) {
       sessionStorage.setItem(SESSION_STORAGE_DEMO_KEY, 'true');
     }
-    this.currentUser = DEMO_USER;
+    const demoProfile = this.loadDemoUserProfile();
+    this.currentUser = demoProfile;
     this.notifyListeners();
-    return DEMO_USER;
+    return demoProfile;
   }
 
   public async logoutDemoUser(): Promise<void> {
@@ -403,56 +441,171 @@ class AuthService {
     }
   }
 
-  public async updateUserProfilePhoto(photoURL: string | null): Promise<void> {
-    if (isDemoMode() || !db) {
-      if (this.currentUser) {
-        this.currentUser = { ...this.currentUser, photoURL: photoURL || undefined };
-        this.notifyListeners();
-      }
+  public async updateUserProfile(updates: Partial<UserProfile>): Promise<void> {
+    if (!this.currentUser) return;
+    const previousUser = { ...this.currentUser };
+    const updatedUser = { ...this.currentUser, ...updates };
+
+    if ('photoURL' in updates && !updates.photoURL) {
+      delete updatedUser.photoURL;
+    }
+
+    this.currentUser = updatedUser;
+
+    if (this.isDemoSessionActive || isDemoMode() || !db) {
+      this.saveDemoUserProfileToStorage(updatedUser);
+      this.notifyListeners();
       return;
     }
 
-    if (this.currentUser) {
-      const userDocRef = doc(db, 'users', this.currentUser.uid);
+    try {
+      const userDocRef = doc(db, 'users', updatedUser.uid);
+      const cleanUpdates: Record<string, any> = {};
+      Object.entries(updates).forEach(([key, val]) => {
+        if (val !== undefined) {
+          cleanUpdates[key] = val;
+        } else if (key === 'photoURL') {
+          cleanUpdates[key] = null;
+        }
+      });
+
       await updateDoc(userDocRef, {
-        photoURL: photoURL || null,
+        ...cleanUpdates,
         updatedAt: serverTimestamp(),
       });
-      this.currentUser = { ...this.currentUser, photoURL: photoURL || undefined };
+
+      if (updates.publicProfile !== undefined || updates.displayName || 'photoURL' in updates) {
+        const publicDocRef = doc(db, 'profiles', updatedUser.uid, 'public', 'data');
+        await setDoc(publicDocRef, {
+          uid: updatedUser.uid,
+          displayName: updatedUser.displayName,
+          photoURL: updatedUser.photoURL || null,
+          city: updatedUser.city || '',
+          affiliationType: updatedUser.affiliationType || '',
+          organizationName: updatedUser.organizationName || updatedUser.organization || '',
+          chapterName: updatedUser.chapterName || '',
+          environmentalRole: updatedUser.environmentalRole || '',
+          bio: updatedUser.bio || '',
+          publicProfile: updatedUser.publicProfile ?? false,
+          updatedAt: serverTimestamp(),
+        }, { merge: true });
+      }
       this.notifyListeners();
+    } catch (err) {
+      console.error('[AuthService] Error updating user profile:', err);
+      this.currentUser = previousUser;
+      this.notifyListeners();
+      throw err;
     }
   }
 
+  public async updateUserProfilePhoto(photoURL: string | null): Promise<void> {
+    await this.updateUserProfile({ photoURL: photoURL || undefined });
+  }
+
   public async getPublicProfile(userId: string): Promise<PublicProfileData> {
-    if (isDemoMode() || !db) {
-      if (userId === DEMO_USER.uid || userId === 'demo-user-1' || userId === 'user-1' || userId.includes('user')) {
+    const isCurrent = this.currentUser && (this.currentUser.uid === userId || (this.isDemoSessionActive && (userId === 'demo-user-1' || userId === 'u-1')));
+
+    if (isCurrent && this.currentUser) {
+      if (!this.currentUser.publicProfile) {
         return {
           uid: userId,
-          displayName: userId === 'user-1' ? 'Alex Chen' : userId === 'user-2' ? 'Priya Sharma' : userId === 'user-3' ? 'David Kim' : 'Alex Chen',
-          photoURL: userId === 'user-1' ? DEMO_USER.photoURL : undefined,
+          displayName: 'Private Profile',
+          publicProfile: false,
+          verifiedRecoveries: 0,
+          measuredWasteKg: 0,
+          completedMissions: 0,
+          recoveryChain: [],
+          publicAchievements: [],
+          dataSource: this.currentUser.dataSource || 'DEMO DATA',
+        };
+      }
+
+      const currentStats = {
+        reportsSubmitted: this.currentUser.hotspotsReported || 8,
+        missionsCompleted: this.currentUser.missionsCompleted || 12,
+        wasteRemovedKg: this.currentUser.wasteRemovedKg || 340,
+        locationsRecovered: this.currentUser.locationsRecovered || 4,
+        missionsOrganized: 1,
+        locationsTransformed: 1,
+        chainLength: 4,
+      };
+
+      return {
+        uid: this.currentUser.uid,
+        displayName: this.currentUser.displayName,
+        photoURL: this.currentUser.photoURL,
+        city: this.currentUser.city,
+        affiliationType: this.currentUser.affiliationType,
+        organizationName: this.currentUser.organizationName || this.currentUser.organization,
+        chapterName: this.currentUser.chapterName,
+        environmentalRole: this.currentUser.environmentalRole,
+        bio: this.currentUser.bio,
+        publicProfile: true,
+        verifiedRecoveries: currentStats.locationsRecovered,
+        measuredWasteKg: currentStats.wasteRemovedKg,
+        completedMissions: currentStats.missionsCompleted,
+        reportsSubmittedCount: currentStats.reportsSubmitted,
+        recoveryChain: [
+          { id: 'link-1', title: 'Pine Street Lot', recoveredAt: '2026-03-15' },
+          { id: 'link-2', title: 'Oak Alley Waterbody', recoveredAt: '2026-04-02' },
+          { id: 'link-3', title: 'Riverbed Clean Zone', recoveredAt: '2026-05-18' },
+          { id: 'link-4', title: 'East Park Spot', recoveredAt: '2026-06-20' },
+        ],
+        publicAchievements: getEarnedBadges(currentStats),
+        activities: [
+          { id: 'act-1', type: 'report', title: 'Reported pollution hotspot: Pine Street Lot', location: 'Sector 4', timestamp: '2026-03-10', impactBadge: '+50 Pts' },
+          { id: 'act-2', type: 'mission_organize', title: 'Organized cleanup mission: Pine St Lot Clearance', location: 'Pine St & 5th Ave', timestamp: '2026-03-15', impactBadge: 'ORGANIZER' },
+          { id: 'act-3', type: 'cleanup_completed', title: 'Completed cleanup action: Pine Street Lot', location: 'Pine St & 5th Ave', timestamp: '2026-03-15', impactBadge: '+200 Pts' },
+          { id: 'act-4', type: 'recovery_verified', title: 'Verified site recovery: Oak Alley Waterbody', location: 'Oak Alley', timestamp: '2026-04-02', impactBadge: 'VERIFIED RECOVERY' }
+        ],
+        linkedinUrl: this.currentUser.linkedinUrl,
+        githubUrl: this.currentUser.githubUrl,
+        dataSource: this.currentUser.dataSource || 'DEMO DATA',
+      };
+    }
+
+    if (isDemoMode() || !db) {
+      if (userId === 'user-1' || userId === 'user-2' || userId === 'user-3' || userId === 'u-2' || userId === 'u-3' || userId.includes('user')) {
+        const isUser2 = userId === 'user-2' || userId === 'u-2';
+        const isUser3 = userId === 'user-3' || userId === 'u-3';
+        const name = isUser2 ? 'Priya Sharma' : isUser3 ? 'David Kim' : 'Sarah Chen';
+
+        const demoStats = {
+          reportsSubmitted: isUser2 ? 15 : isUser3 ? 2 : 8,
+          missionsCompleted: isUser2 ? 28 : isUser3 ? 5 : 12,
+          wasteRemovedKg: isUser2 ? 1200 : isUser3 ? 120 : 450,
+          locationsRecovered: isUser2 ? 8 : isUser3 ? 1 : 3,
+          missionsOrganized: isUser2 ? 5 : isUser3 ? 0 : 2,
+          locationsTransformed: isUser2 ? 3 : isUser3 ? 0 : 1,
+          chainLength: isUser2 ? 8 : isUser3 ? 1 : 3,
+        };
+
+        return {
+          uid: userId,
+          displayName: name,
+          photoURL: isUser2 ? 'https://i.pravatar.cc/150?u=sarah' : isUser3 ? 'https://i.pravatar.cc/150?u=david' : undefined,
           city: 'Hyderabad',
           affiliationType: 'NSS Chapter',
-          organizationName: 'BVRIT Hyderabad',
-          chapterName: 'NSS Unit 02',
-          environmentalRole: 'NSS Volunteer',
-          bio: 'Passionate about recovering urban waterbodies and plastic waste reduction.',
+          organizationName: 'EcoAlliance',
+          chapterName: 'Unit 01',
+          environmentalRole: 'Community Leader',
+          bio: 'Active environmental worker focusing on waste collection and recycling.',
           publicProfile: true,
-          verifiedRecoveries: 4,
-          measuredWasteKg: 340,
-          completedMissions: 12,
+          verifiedRecoveries: demoStats.locationsRecovered,
+          measuredWasteKg: demoStats.wasteRemovedKg,
+          completedMissions: demoStats.missionsCompleted,
+          reportsSubmittedCount: demoStats.reportsSubmitted,
           recoveryChain: [
-            { id: 'link-1', title: 'Pine Street Lot', recoveredAt: '2026-03-15' },
-            { id: 'link-2', title: 'Oak Alley Waterbody', recoveredAt: '2026-04-02' },
-            { id: 'link-3', title: 'Riverbed Clean Zone', recoveredAt: '2026-05-18' },
-            { id: 'link-4', title: 'East Park Spot', recoveredAt: '2026-06-20' },
+            { id: 'link-1', title: 'Riverbank Rescue', recoveredAt: '2026-02-10' },
+            { id: 'link-2', title: 'Downtown Square', recoveredAt: '2026-03-22' },
           ],
-          publicAchievements: [
-            { id: 'ach-1', title: 'First Recovery', desc: 'Verified cleanup of your first polluted site.', icon: '🛡️' },
-            { id: 'ach-2', title: 'First Cleanup', desc: 'Completed a community cleanup mission.', icon: '🧹' },
-            { id: 'ach-3', title: '5 Places Recovered', desc: 'Helped recover 5 distinct pollution hotspots.', icon: '🌿' },
+          publicAchievements: getEarnedBadges(demoStats),
+          activities: [
+            { id: 'act-101', type: 'report', title: 'Reported hotspot: Riverbank Plastic Accumulation', location: 'East Riverbank', timestamp: '2026-07-20', impactBadge: '+50 Pts' },
+            { id: 'act-102', type: 'mission_join', title: 'Joined mission: Riverbank Rescue Operation', location: 'Sector 4', timestamp: '2026-07-28', impactBadge: 'VOLUNTEER' },
+            { id: 'act-103', type: 'recovery_verified', title: 'Site recovery verified: Downtown Square Transformation', location: 'Downtown', timestamp: '2026-08-10', impactBadge: 'VERIFIED RECOVERY' }
           ],
-          linkedinUrl: 'https://linkedin.com',
-          githubUrl: 'https://github.com',
           dataSource: 'DEMO DATA',
         };
       }
@@ -470,7 +623,6 @@ class AuthService {
     }
 
     try {
-      // 1. Try public document collection profiles/{userId}/public/data
       const publicDocRef = doc(db, 'profiles', userId, 'public', 'data');
       const publicSnap = await getDoc(publicDocRef);
       if (publicSnap.exists()) {
@@ -478,10 +630,24 @@ class AuthService {
         if (!data.publicProfile) {
           return { uid: userId, displayName: 'Private Profile', publicProfile: false, verifiedRecoveries: 0, measuredWasteKg: 0, completedMissions: 0, recoveryChain: [], publicAchievements: [], dataSource: 'FIELD DATA' };
         }
-        return data;
+
+        const publicStats = {
+          reportsSubmitted: data.reportsSubmittedCount || 0,
+          missionsCompleted: data.completedMissions || 0,
+          wasteRemovedKg: data.measuredWasteKg || 0,
+          locationsRecovered: data.verifiedRecoveries || 0,
+          missionsOrganized: 0,
+          locationsTransformed: 0,
+          chainLength: data.recoveryChain?.length || 0,
+        };
+        return {
+          ...data,
+          publicAchievements: (data.publicAchievements && data.publicAchievements.length > 0)
+            ? data.publicAchievements
+            : getEarnedBadges(publicStats)
+        };
       }
 
-      // 2. Fallback check users collection
       const userDocRef = doc(db, 'users', userId);
       const userSnap = await getDoc(userDocRef);
       if (userSnap.exists()) {
@@ -490,6 +656,16 @@ class AuthService {
         if (!isPublic) {
           return { uid: userId, displayName: 'Private Profile', publicProfile: false, verifiedRecoveries: 0, measuredWasteKg: 0, completedMissions: 0, recoveryChain: [], publicAchievements: [], dataSource: 'FIELD DATA' };
         }
+
+        const userStats = {
+          reportsSubmitted: data.hotspotsReported || 0,
+          missionsCompleted: data.missionsCompleted || 0,
+          wasteRemovedKg: data.wasteRemovedKg || 0,
+          locationsRecovered: data.locationsRecovered || 0,
+          missionsOrganized: data.missionsOrganized || 0,
+          locationsTransformed: data.locationsTransformed || 0,
+          chainLength: data.locationsRecovered || 0,
+        };
 
         return {
           uid: userId,
@@ -502,17 +678,18 @@ class AuthService {
           environmentalRole: data.environmentalRole || 'Citizen',
           bio: data.bio || '',
           publicProfile: true,
-          verifiedRecoveries: data.locationsRecovered || 3,
-          measuredWasteKg: data.wasteRemovedKg || 180,
-          completedMissions: data.missionsCompleted || 6,
+          verifiedRecoveries: userStats.locationsRecovered,
+          measuredWasteKg: userStats.wasteRemovedKg,
+          completedMissions: userStats.missionsCompleted,
+          reportsSubmittedCount: userStats.reportsSubmitted,
           recoveryChain: [
             { id: 'l-1', title: 'Pine Street Lot', recoveredAt: '2026-04-10' },
             { id: 'l-2', title: 'Oak Alley', recoveredAt: '2026-05-12' },
-            { id: 'l-3', title: 'Riverbed Clean', recoveredAt: '2026-06-01' },
           ],
-          publicAchievements: [
-            { id: 'ach-1', title: 'First Recovery', desc: 'Verified cleanup of your first polluted site.', icon: '🛡️' },
-            { id: 'ach-2', title: 'First Cleanup', desc: 'Completed a community cleanup mission.', icon: '🧹' },
+          publicAchievements: getEarnedBadges(userStats),
+          activities: [
+            { id: 'act-f-1', type: 'report', title: `Reported hotspot in ${data.city || 'local area'}`, timestamp: data.createdAt ? new Date(data.createdAt).toISOString().split('T')[0] : '2026-05-01', impactBadge: '+50 Pts' },
+            { id: 'act-f-2', type: 'cleanup_completed', title: 'Completed community cleanup mission', timestamp: '2026-05-15', impactBadge: 'VERIFIED' }
           ],
           linkedinUrl: data.linkedinUrl || '',
           githubUrl: data.githubUrl || '',

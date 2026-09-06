@@ -13,8 +13,11 @@ import { Badge } from '../components/ui/Badge';
 import { Card, CardContent } from '../components/ui/Card';
 import { ImpactBadge } from '../components/ui/ImpactBadge';
 import { RecoveryCelebration } from '../components/ui/impact/ImpactMoments';
+import { hotspotService } from '../services/hotspotService';
+import { missionService } from '../services/missionService';
 import { missions, hotspots } from '../data/mockData';
 import { cn } from '../utils/cn';
+import { PageTransition } from '../components/ui/PageTransition';
 import type { 
   FieldActivityStatus, MeasurementMethod, MeasurementUnit, 
   RecurrenceStatus, WasteCategory, WasteRecord, RecoveryRecord
@@ -273,6 +276,12 @@ export default function FieldMode() {
     setRecoveryRecord(newRec);
     setShowCelebration(true);
     setStep(6);
+    if (refId) {
+      missionService.updateMissionStatus(refId, 'verified');
+    }
+    if (hotspot?.id) {
+      hotspotService.updateHotspotStatus(hotspot.id, 'cleaned');
+    }
   };
 
   // Calculate segregated totals
@@ -289,7 +298,8 @@ export default function FieldMode() {
   };
 
   return (
-    <div className="min-h-screen bg-neutral-900 text-neutral-100 pb-32">
+    <PageTransition>
+      <div className="min-h-screen bg-neutral-900 text-neutral-100 pb-32">
       <RecoveryCelebration 
         show={showCelebration} 
         impactScore={250} 
@@ -1294,5 +1304,6 @@ export default function FieldMode() {
 
       </div>
     </div>
+    </PageTransition>
   );
 }
