@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
-  TreePine, ArrowRight, ShieldCheck, MapPin, 
+  ArrowRight, ShieldCheck, MapPin,
   Sparkles, Users, Flame, Globe2, Brain, FileText,
   CheckCircle2, Target, Menu, X, Loader2
 } from 'lucide-react';
@@ -16,6 +16,7 @@ import { useAuth } from '../hooks/useAuth';
 import { cn } from '../utils/cn';
 import { PageTransition } from '../components/ui/PageTransition';
 import { ScrollProgress } from '../components/ui/ScrollProgress';
+import { PersonalFooter } from '../components/layout/PersonalFooter';
 
 // 6-Step Journey Data
 const JOURNEY_STEPS = [
@@ -737,49 +738,10 @@ export default function Landing() {
         </ScrollReveal>
       </section>
 
-      {/* 8. FOOTER & CREATOR ATTRIBUTION (Nirmala Devi Patel) */}
-      <footer className="bg-white dark:bg-[#121915] border-t border-[#E2E8F0] dark:border-[#1E2C24] py-12 px-4 text-[#64748B] dark:text-[#94A3B8] text-xs font-mono">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="space-y-1 text-center md:text-left">
-            <div className="flex items-center justify-center md:justify-start gap-2 text-[#0F172A] dark:text-white font-bold text-base">
-              <TreePine className="w-5 h-5 text-emerald-600 dark:text-emerald-400" /> TrashChain
-            </div>
-            <p className="text-[#64748B] dark:text-[#94A3B8] text-[11px] font-sans">Transforming polluted spaces into verified community recoveries.</p>
-          </div>
-
-          <div className="flex flex-wrap justify-center gap-6 font-semibold text-[#0F172A] dark:text-white">
-            <Link to="/explore" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">Explore</Link>
-            <Link to="/report" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">Report</Link>
-            <Link to="/missions" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">Missions</Link>
-            <Link to="/timeline" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">Timeline</Link>
-            <Link to="/leaderboard" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">Leaderboard</Link>
-            <Link to="/about" className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors">About</Link>
-          </div>
-
-          <div className="text-[#64748B] dark:text-[#94A3B8] text-center md:text-right space-y-1">
-            <div>Created by <span className="font-bold text-[#0F172A] dark:text-white">Nirmala Devi Patel</span></div>
-            <div className="flex items-center justify-center md:justify-end gap-3 text-[10px]">
-              <a
-                href="https://www.linkedin.com/in/nirmaladevipatel2005/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 dark:text-blue-400 hover:underline font-bold"
-              >
-                LinkedIn
-              </a>
-              <span>•</span>
-              <a
-                href="https://github.com/nirmaladevi2005"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[#0F172A] dark:text-white hover:underline font-bold"
-              >
-                GitHub
-              </a>
-            </div>
-          </div>
-        </div>
-      </footer>
+      {/* 8. PERSONAL DEVELOPER FOOTER */}
+      <div className="px-4 pb-8 max-w-7xl mx-auto">
+        <PersonalFooter />
+      </div>
 
     </div>
     </PageTransition>

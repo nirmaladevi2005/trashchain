@@ -10,6 +10,7 @@ import { pageVariants, useShouldReduceMotion } from '../../utils/animationVarian
 
 import { CustomCursor } from '../ui/CustomCursor';
 import { AppHeader } from './AppHeader';
+import { PersonalFooter } from './PersonalFooter';
 
 function LayoutContent() {
   const { isAuthenticated, loading, isDemo } = useAuth();
@@ -45,7 +46,7 @@ function LayoutContent() {
         )}
       >
         <AppHeader />
-        <div className="max-w-7xl mx-auto w-full flex-1 px-4 sm:px-6 md:px-8 py-6 overflow-x-hidden">
+        <div className="max-w-7xl mx-auto w-full flex-1 px-4 sm:px-6 md:px-8 py-6 overflow-x-hidden flex flex-col justify-between">
           {shouldReduceMotion ? (
             currentOutlet
           ) : (
@@ -62,6 +63,7 @@ function LayoutContent() {
               </motion.div>
             </AnimatePresence>
           )}
+          <PersonalFooter />
         </div>
       </main>
       
