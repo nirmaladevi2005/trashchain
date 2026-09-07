@@ -989,7 +989,7 @@ export default function Report() {
                     <div className="rounded-2xl border border-fresh-500/25 bg-forest-950/30 p-5 text-center shadow-lg">
                       <h3 className="text-base font-bold text-white">Turn this analysis into an action plan</h3>
                       <p className="mx-auto mt-1 max-w-lg text-xs leading-relaxed text-neutral-400">Get practical cleanup, prevention, and monitoring guidance based on the Gemini scene analysis. Field measurements remain separate.</p>
-                      <Button onClick={createRecoveryPlan} disabled={isBuildingRecoveryPlan} className="mt-4 bg-fresh-600 px-5 py-3 text-xs font-bold text-neutral-950 hover:bg-fresh-500 disabled:opacity-70">
+                      <Button onClick={createRecoveryPlan} disabled={isBuildingRecoveryPlan} className="mt-4 bg-fresh-600 px-6 py-3.5 text-xs font-bold text-neutral-950 hover:bg-fresh-500 disabled:opacity-70 min-h-[48px] w-full sm:w-auto flex items-center justify-center mx-auto">
                         {isBuildingRecoveryPlan ? <><Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> Building your recovery plan…</> : <><Sparkles className="mr-1.5 h-4 w-4" /> Create Recovery Plan</>}
                       </Button>
                       {recoveryPlanError && (

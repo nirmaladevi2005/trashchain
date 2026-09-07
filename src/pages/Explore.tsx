@@ -109,8 +109,8 @@ export default function Explore() {
   }, [hotspotsList]);
 
   return (
-    <PageTransition className="h-[calc(100vh-6rem)] max-h-[calc(100vh-6rem)]">
-      <div className="h-full w-full bg-[#F6F8F5] dark:bg-[#0A0F0D] text-[#0F172A] dark:text-[#F8FAFC] flex flex-col font-sans overflow-hidden transition-colors duration-200">
+    <PageTransition className="min-h-[calc(100vh-4rem)] md:h-[calc(100vh-6rem)] md:max-h-[calc(100vh-6rem)] flex flex-col">
+      <div className="h-full w-full bg-[#F6F8F5] dark:bg-[#0A0F0D] text-[#0F172A] dark:text-[#F8FAFC] flex flex-col font-sans overflow-visible md:overflow-hidden transition-colors duration-200">
       
       {/* 1. EXPLORE PAGE HEADER */}
       <header className="bg-white dark:bg-[#121915] border-b border-[#E2E8F0] dark:border-[#1E2C24] px-4 py-4 md:px-8 shrink-0">
@@ -132,22 +132,22 @@ export default function Explore() {
           </div>
 
           {/* Quick Network Stats */}
-          <div className="flex items-center gap-3 font-mono text-xs bg-neutral-900 border border-neutral-800 p-2.5 rounded-2xl shrink-0">
+          <div className="flex items-center gap-3 font-mono text-xs bg-neutral-900 border border-neutral-800 p-2.5 rounded-2xl shrink-0 overflow-x-auto">
             <div className="text-center px-2">
               <span className="text-[10px] text-coral-400 block uppercase">Active</span>
               <span className="font-bold text-white text-base">{stats.active}</span>
             </div>
-            <div className="w-px h-6 bg-neutral-800" />
+            <div className="w-px h-6 bg-neutral-800 shrink-0" />
             <div className="text-center px-2">
               <span className="text-[10px] text-yellow-400 block uppercase">Missions</span>
               <span className="font-bold text-white text-base">{stats.missions}</span>
             </div>
-            <div className="w-px h-6 bg-neutral-800" />
+            <div className="w-px h-6 bg-neutral-800 shrink-0" />
             <div className="text-center px-2">
               <span className="text-[10px] text-fresh-400 block uppercase">Recovered</span>
               <span className="font-bold text-white text-base">{stats.recovered}</span>
             </div>
-            <div className="w-px h-6 bg-neutral-800" />
+            <div className="w-px h-6 bg-neutral-800 shrink-0" />
             <div className="text-center px-2">
               <span className="text-[10px] text-purple-400 block uppercase">Transform</span>
               <span className="font-bold text-white text-base">{stats.transformed}</span>
@@ -191,7 +191,7 @@ export default function Explore() {
                 key={tab.id}
                 onClick={() => setActiveFilter(tab.id as FilterType)}
                 className={cn(
-                  "px-3 py-1.5 rounded-xl border text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5",
+                  "px-3 py-1.5 rounded-xl border text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 min-h-[38px]",
                   activeFilter === tab.id
                     ? "bg-forest-600 border-forest-500 text-white shadow-md"
                     : "bg-neutral-950 border-neutral-800 text-neutral-400 hover:text-white hover:border-neutral-700"
@@ -209,10 +209,10 @@ export default function Explore() {
       </div>
 
       {/* 2. MAP MAIN AREA AND DETAILED SIDE PANEL */}
-      <div className="flex-1 flex flex-col md:flex-row relative overflow-hidden min-h-0">
+      <div className="flex-1 flex flex-col md:flex-row relative overflow-visible md:overflow-hidden min-h-0">
         
-        {/* Real Leaflet Satellite Map Layer */}
-        <div className="flex-1 h-full min-h-0 p-2 sm:p-3 bg-neutral-50 dark:bg-neutral-950 relative overflow-hidden">
+        {/* Real Leaflet Satellite Map Layer - Full Width 50vh on Mobile */}
+        <div className="w-full md:flex-1 h-[50vh] min-h-[340px] max-h-[500px] md:h-full md:min-h-0 md:max-h-none p-2 sm:p-3 bg-neutral-50 dark:bg-neutral-950 relative overflow-hidden shrink-0 md:shrink">
           <SatelliteMap 
             items={filteredHotspots} 
             selectedHotspotId={selectedHotspot?.id}
@@ -220,8 +220,8 @@ export default function Explore() {
           />
         </div>
 
-        {/* Desktop Side List & Selected Hotspot Detail Panel */}
-        <div className="w-full md:w-96 bg-neutral-950 border-t md:border-t-0 md:border-l border-neutral-850 flex flex-col h-64 md:h-full shrink-0 min-h-0 overflow-hidden">
+        {/* Mobile Stacked List & Desktop Side List / Detail Panel */}
+        <div className="w-full md:w-96 bg-neutral-950 border-t md:border-t-0 md:border-l border-neutral-850 flex flex-col h-auto md:h-full shrink-0 md:min-h-0 overflow-visible md:overflow-hidden">
           
           {/* List Header */}
           <div className="p-3 border-b border-neutral-850 flex items-center justify-between shrink-0">

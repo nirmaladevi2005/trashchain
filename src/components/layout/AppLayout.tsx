@@ -41,7 +41,7 @@ function LayoutContent() {
       
       <main 
         className={cn(
-          "flex-1 pb-24 md:pb-6 transition-all duration-300 ease-in-out flex flex-col min-h-screen",
+          "flex-1 pb-28 md:pb-6 transition-all duration-300 ease-in-out flex flex-col min-h-screen overflow-x-hidden",
           isCollapsed ? "md:ml-20" : "md:ml-64"
         )}
       >

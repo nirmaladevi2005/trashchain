@@ -20,9 +20,9 @@ export function BottomNav() {
             key={item.path}
             to={item.path}
             className={({ isActive }) => cn(
-              "flex flex-col items-center p-1.5 rounded-lg min-w-[56px] transition-colors",
-              isActive 
-                ? "text-forest-600 dark:text-fresh-400 font-bold" 
+              "flex flex-col items-center justify-center p-1.5 rounded-xl min-w-[52px] min-h-[48px] transition-colors active:scale-95",
+              isActive
+                ? "text-forest-600 dark:text-fresh-400 font-bold bg-forest-50 dark:bg-forest-950/40"
                 : "text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white"
             )}
           >

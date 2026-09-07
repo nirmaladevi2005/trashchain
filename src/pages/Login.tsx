@@ -135,7 +135,10 @@ export default function Login() {
             <input
               type="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                if (error) setError(null);
+              }}
               className="w-full px-4 py-2.5 rounded-xl border border-[#E2E8F0] dark:border-[#1E2C24] bg-[#F6F8F5] dark:bg-[#0A0F0D] text-[#0F172A] dark:text-white text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
               placeholder="alex@example.com"
               required
@@ -159,7 +162,10 @@ export default function Login() {
               <input
                 type={showPassword ? 'text' : 'password'}
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  if (error) setError(null);
+                }}
                 className="w-full px-4 py-2.5 pr-10 rounded-xl border border-[#E2E8F0] dark:border-[#1E2C24] bg-[#F6F8F5] dark:bg-[#0A0F0D] text-[#0F172A] dark:text-white text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
                 placeholder="••••••••"
                 required
