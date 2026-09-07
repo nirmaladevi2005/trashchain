@@ -4,11 +4,23 @@ import { getFirestore, type Firestore } from 'firebase/firestore';
 import { getStorage, type FirebaseStorage } from 'firebase/storage';
 import { getFunctions, type Functions } from 'firebase/functions';
 
+const rawApiKey = import.meta.env.VITE_FIREBASE_API_KEY || '';
+const rawProjectId = import.meta.env.VITE_FIREBASE_PROJECT_ID || '';
+const rawAuthDomain = import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || '';
+
+// Cleanly derive authDomain and storageBucket if not explicitly provided or if misconfigured with external hosting URL
+const derivedAuthDomain = (rawAuthDomain && !rawAuthDomain.includes('.vercel.app'))
+  ? rawAuthDomain
+  : (rawProjectId ? `${rawProjectId}.firebaseapp.com` : rawAuthDomain);
+
+const derivedStorageBucket = import.meta.env.VITE_FIREBASE_STORAGE_BUCKET ||
+  (rawProjectId ? `${rawProjectId}.appspot.com` : '');
+
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || '',
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || (import.meta.env.VITE_FIREBASE_PROJECT_ID ? `${import.meta.env.VITE_FIREBASE_PROJECT_ID}.firebaseapp.com` : ''),
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || '',
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || (import.meta.env.VITE_FIREBASE_PROJECT_ID ? `${import.meta.env.VITE_FIREBASE_PROJECT_ID}.appspot.com` : ''),
+  apiKey: rawApiKey,
+  authDomain: derivedAuthDomain,
+  projectId: rawProjectId,
+  storageBucket: derivedStorageBucket,
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '',
   appId: import.meta.env.VITE_FIREBASE_APP_ID || '',
 };

@@ -437,7 +437,7 @@ export default function Report() {
 
   return (
     <PageTransition>
-      <div className="min-h-screen bg-neutral-950 text-neutral-100 font-sans pb-28">
+      <div className="min-h-screen bg-neutral-950 text-neutral-100 font-sans pb-36 sm:pb-28">
       
       {/* Reusable Celebration Micro-Interaction */}
       <ImpactCelebration 
@@ -656,6 +656,24 @@ export default function Report() {
                       </span>
                     </div>
                   </div>
+
+                  {/* STEP 1 IN-FLOW NAVIGATION CONTROLS */}
+                  {report.imageUrl && (
+                    <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-neutral-900 border border-neutral-800 rounded-2xl p-4 shadow-xl">
+                      <div className="text-xs font-mono text-neutral-400 flex items-center gap-2">
+                        <CheckCircle2 className="w-4 h-4 text-fresh-400 shrink-0" />
+                        <span>Evidence photo attached. Proceed to location pin.</span>
+                      </div>
+                      <Button
+                        type="button"
+                        onClick={handleNext}
+                        disabled={!isStepValid() || isUploading}
+                        className="w-full sm:w-auto min-h-[48px] bg-forest-600 hover:bg-forest-700 text-white font-bold text-xs py-3 px-8 shadow-lg shadow-forest-600/25 flex items-center justify-center gap-2 font-mono shrink-0"
+                      >
+                        Continue to Location <ArrowRight className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
             </motion.div>
@@ -731,6 +749,26 @@ export default function Report() {
                   </div>
                 </div>
               )}
+
+              {/* STEP 2 IN-FLOW NAVIGATION CONTROLS */}
+              <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-neutral-900 border border-neutral-800 rounded-2xl p-4 shadow-xl">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleBack}
+                  className="w-full sm:w-auto min-h-[48px] border-neutral-700 text-white font-bold text-xs py-3 px-6 font-mono flex items-center justify-center gap-1.5"
+                >
+                  <ChevronLeft className="w-4 h-4" /> Previous Step
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleNext}
+                  disabled={!isStepValid()}
+                  className="w-full sm:w-auto min-h-[48px] bg-forest-600 hover:bg-forest-700 text-white font-bold text-xs py-3 px-8 shadow-lg shadow-forest-600/25 flex items-center justify-center gap-2 font-mono"
+                >
+                  Continue to Waste & Severity <ArrowRight className="w-4 h-4" />
+                </Button>
+              </div>
             </motion.div>
           )}
 
@@ -821,6 +859,26 @@ export default function Report() {
                     {report.recurring ? 'Yes, recurring spot' : 'No / First time'}
                   </button>
                 </div>
+              </div>
+
+              {/* STEP 3 IN-FLOW NAVIGATION CONTROLS */}
+              <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-neutral-900 border border-neutral-800 rounded-2xl p-4 shadow-xl">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleBack}
+                  className="w-full sm:w-auto min-h-[48px] border-neutral-700 text-white font-bold text-xs py-3 px-6 font-mono flex items-center justify-center gap-1.5"
+                >
+                  <ChevronLeft className="w-4 h-4" /> Previous Step
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleNext}
+                  disabled={!isStepValid()}
+                  className="w-full sm:w-auto min-h-[48px] bg-forest-600 hover:bg-forest-700 text-white font-bold text-xs py-3 px-8 shadow-lg shadow-forest-600/25 flex items-center justify-center gap-2 font-mono"
+                >
+                  Continue to AI Analysis <ArrowRight className="w-4 h-4" />
+                </Button>
               </div>
             </motion.div>
           )}
@@ -926,6 +984,25 @@ export default function Report() {
                   {recoveryPlan && (
                     <RecoveryPlanCard plan={recoveryPlan} onStartMission={() => navigate(createdHotspotId ? `/missions?startMissionFor=${createdHotspotId}` : '/missions')} />
                   )}
+
+                  {/* STEP 4 IN-FLOW NAVIGATION CONTROLS */}
+                  <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-neutral-900 border border-neutral-800 rounded-2xl p-4 shadow-xl">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleBack}
+                      className="w-full sm:w-auto min-h-[48px] border-neutral-700 text-white font-bold text-xs py-3 px-6 font-mono flex items-center justify-center gap-1.5"
+                    >
+                      <ChevronLeft className="w-4 h-4" /> Previous Step
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={handleNext}
+                      className="w-full sm:w-auto min-h-[48px] bg-forest-600 hover:bg-forest-700 text-white font-bold text-xs py-3 px-8 shadow-lg shadow-forest-600/25 flex items-center justify-center gap-2 font-mono"
+                    >
+                      Continue to Review & Submit <ArrowRight className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
               )}
             </motion.div>
@@ -974,7 +1051,7 @@ export default function Report() {
                   <Button 
                     onClick={handleSubmitReport}
                     disabled={isSubmitting || authLoading}
-                    className="flex-1 bg-forest-600 hover:bg-forest-700 text-white font-bold text-xs py-3 font-mono"
+                    className="flex-1 min-h-[48px] bg-forest-600 hover:bg-forest-700 text-white font-bold text-xs py-3 font-mono shadow-lg shadow-forest-600/25 flex items-center justify-center gap-2"
                   >
                     {isSubmitting ? (
                       <Loader2 className="w-4 h-4 animate-spin mx-auto" />
@@ -984,7 +1061,7 @@ export default function Report() {
                       'Submit Pollution Report'
                     )}
                   </Button>
-                  <Button variant="outline" onClick={() => setStep(1)} className="border-neutral-700 text-xs font-bold font-mono">
+                  <Button variant="outline" onClick={() => setStep(1)} className="min-h-[48px] border-neutral-700 text-xs font-bold font-mono">
                     Edit Details
                   </Button>
                 </div>
@@ -1035,14 +1112,25 @@ export default function Report() {
 
       {/* FLOATING ACTION BAR FOR MOBILE / DESKTOP */}
       {step < 5 && (
-        <div className="fixed bottom-0 left-0 right-0 p-4 bg-neutral-950/90 border-t border-neutral-850 backdrop-blur-md z-30 flex justify-center">
-          <div className="max-w-3xl w-full flex justify-end gap-3">
+        <div className="fixed bottom-16 md:bottom-0 left-0 right-0 p-4 bg-neutral-950/95 border-t border-neutral-850 backdrop-blur-md z-40 flex justify-center">
+          <div className="max-w-3xl w-full flex items-center justify-between sm:justify-end gap-3">
+            {step > 1 && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleBack}
+                className="sm:hidden min-h-[44px] border-neutral-700 text-white font-bold text-xs py-2.5 px-4 font-mono flex items-center gap-1"
+              >
+                <ChevronLeft className="w-4 h-4" /> Back
+              </Button>
+            )}
             <Button 
+              type="button"
               onClick={handleNext}
               disabled={!isStepValid() || isUploading}
-              className="w-full sm:w-auto bg-forest-600 hover:bg-forest-700 text-white font-bold text-xs py-3 px-8 shadow-lg shadow-forest-600/25"
+              className="w-full sm:w-auto min-h-[44px] bg-forest-600 hover:bg-forest-700 text-white font-bold text-xs py-3 px-8 shadow-lg shadow-forest-600/25 flex items-center justify-center gap-2 font-mono"
             >
-              Continue to {['Location', 'Waste & Severity', 'AI Analysis', 'Review'][step - 1]} <ArrowRight className="w-4 h-4 ml-1.5" />
+              Continue to {['Location', 'Waste & Severity', 'AI Analysis', 'Review'][step - 1]} <ArrowRight className="w-4 h-4" />
             </Button>
           </div>
         </div>

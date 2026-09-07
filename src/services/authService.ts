@@ -331,7 +331,7 @@ class AuthService {
       case 'auth/account-exists-with-different-credential':
         return new Error('An account already exists with this email address under a different login provider.');
       case 'auth/unauthorized-domain':
-        return new Error(`Authentication domain "${currentHostname}" is not authorized. Please add "${currentHostname}" to Firebase Console ➔ Authentication ➔ Settings ➔ Authorized domains.`);
+        return new Error(`Authentication domain "${currentHostname}" is not authorized. Please add "${currentHostname}" in Firebase Console ➔ Authentication ➔ Settings ➔ Authorized domains.`);
       case 'auth/operation-not-allowed':
         return new Error('Email/password sign-up is currently disabled. Please enable Email/Password authentication in Firebase Console.');
       case 'auth/api-key-not-valid':
