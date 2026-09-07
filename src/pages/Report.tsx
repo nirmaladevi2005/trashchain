@@ -657,23 +657,45 @@ export default function Report() {
                     </div>
                   </div>
 
-                  {/* STEP 1 IN-FLOW NAVIGATION CONTROLS */}
-                  {report.imageUrl && (
-                    <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-neutral-900 border border-neutral-800 rounded-2xl p-4 shadow-xl">
-                      <div className="text-xs font-mono text-neutral-400 flex items-center gap-2">
-                        <CheckCircle2 className="w-4 h-4 text-fresh-400 shrink-0" />
-                        <span>Evidence photo attached. Proceed to location pin.</span>
-                      </div>
-                      <Button
-                        type="button"
-                        onClick={handleNext}
-                        disabled={!isStepValid() || isUploading}
-                        className="w-full sm:w-auto min-h-[48px] bg-forest-600 hover:bg-forest-700 text-white font-bold text-xs py-3 px-8 shadow-lg shadow-forest-600/25 flex items-center justify-center gap-2 font-mono shrink-0"
-                      >
-                        Continue to Location <ArrowRight className="w-4 h-4" />
-                      </Button>
+                  {/* STEP 1 SINGLE NAVIGATION CONTROL */}
+                  <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-neutral-900 border border-neutral-800 rounded-2xl p-4 shadow-xl">
+                    <div className="text-xs font-mono text-neutral-400 flex items-center gap-2">
+                      <CheckCircle2 className={cn("w-4 h-4 shrink-0", report.imageUrl ? "text-fresh-400" : "text-neutral-600")} />
+                      <span>
+                        {!report.imageUrl
+                          ? 'Select an evidence photo to continue.'
+                          : isUploading
+                          ? 'Uploading photo...'
+                          : 'Evidence photo attached. Proceed to location pin.'}
+                      </span>
                     </div>
-                  )}
+                    <Button
+                      type="button"
+                      onClick={handleNext}
+                      disabled={!isStepValid() || isUploading}
+                      className="w-full sm:w-auto min-h-[48px] bg-forest-600 hover:bg-forest-700 text-white font-bold text-xs py-3 px-8 shadow-lg shadow-forest-600/25 flex items-center justify-center gap-2 font-mono shrink-0"
+                    >
+                      Continue to Location <ArrowRight className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* STEP 1 SINGLE NAVIGATION CONTROL (WHEN NO PHOTO SELECTED YET) */}
+              {!report.imageUrl && (
+                <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-neutral-900 border border-neutral-800 rounded-2xl p-4 shadow-xl">
+                  <div className="text-xs font-mono text-neutral-400 flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-neutral-600 shrink-0" />
+                    <span>Select or take an evidence photo to continue.</span>
+                  </div>
+                  <Button
+                    type="button"
+                    onClick={handleNext}
+                    disabled={true}
+                    className="w-full sm:w-auto min-h-[48px] bg-forest-600/50 text-white/50 font-bold text-xs py-3 px-8 cursor-not-allowed flex items-center justify-center gap-2 font-mono shrink-0"
+                  >
+                    Continue to Location <ArrowRight className="w-4 h-4" />
+                  </Button>
                 </div>
               )}
             </motion.div>
@@ -1109,32 +1131,6 @@ export default function Report() {
 
         </AnimatePresence>
       </div>
-
-      {/* FLOATING ACTION BAR FOR MOBILE / DESKTOP */}
-      {step < 5 && (
-        <div className="fixed bottom-16 md:bottom-0 left-0 right-0 p-4 bg-neutral-950/95 border-t border-neutral-850 backdrop-blur-md z-40 flex justify-center">
-          <div className="max-w-3xl w-full flex items-center justify-between sm:justify-end gap-3">
-            {step > 1 && (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleBack}
-                className="sm:hidden min-h-[44px] border-neutral-700 text-white font-bold text-xs py-2.5 px-4 font-mono flex items-center gap-1"
-              >
-                <ChevronLeft className="w-4 h-4" /> Back
-              </Button>
-            )}
-            <Button 
-              type="button"
-              onClick={handleNext}
-              disabled={!isStepValid() || isUploading}
-              className="w-full sm:w-auto min-h-[44px] bg-forest-600 hover:bg-forest-700 text-white font-bold text-xs py-3 px-8 shadow-lg shadow-forest-600/25 flex items-center justify-center gap-2 font-mono"
-            >
-              Continue to {['Location', 'Waste & Severity', 'AI Analysis', 'Review'][step - 1]} <ArrowRight className="w-4 h-4" />
-            </Button>
-          </div>
-        </div>
-      )}
 
     </div>
     </PageTransition>
