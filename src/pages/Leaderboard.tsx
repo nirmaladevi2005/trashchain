@@ -74,6 +74,8 @@ export default function Leaderboard() {
     photoURL: authUser.photoURL,
     environmentalScore: authUser.impactScore ?? 742,
     rank: authUser.role || 'Eco Guardian',
+    participantType: authUser.participantType || 'Individual Citizen',
+    institutionName: authUser.institutionName || authUser.organization,
     verifiedRecoveries: authUser.locationsRecovered ?? 4,
     measuredWaste: `${authUser.wasteRemovedKg ?? 340} kg`,
     chainLength: `${authUser.missionsCompleted ?? 4} Links`,
@@ -255,8 +257,15 @@ export default function Leaderboard() {
                         YOU
                       </span>
                     )}
+                    {(user.participantType || (user as any).category) && (
+                      <span className="text-[9px] font-mono font-bold bg-neutral-800 text-neutral-300 px-2 py-0.5 rounded border border-neutral-700">
+                        {user.participantType || (user as any).category}
+                      </span>
+                    )}
                   </div>
-                  <p className="text-xs text-neutral-400 font-mono truncate">{user.rank}</p>
+                  <p className="text-xs text-neutral-400 font-mono truncate">
+                    {user.rank}{user.institutionName ? ` • ${user.institutionName}` : ''}
+                  </p>
                 </div>
 
                 {/* Verified Metrics */}

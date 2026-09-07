@@ -86,13 +86,13 @@ export default function Login() {
             <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
             <div className="space-y-1">
               <p className="font-semibold leading-normal">{error}</p>
-              {error.includes('unavailable on this domain') && (
+              {(error.includes('not authorized') || error.includes('Firebase Console')) && (
                 <button
                   type="button"
                   onClick={handleDemoLogin}
-                  className="text-emerald-700 dark:text-emerald-400 font-bold underline hover:no-underline text-xs block"
+                  className="text-emerald-700 dark:text-emerald-400 font-bold underline hover:no-underline text-xs block pt-1"
                 >
-                  Click here to explore Demo Mode instead ➔
+                  Explore in Demo Mode while domain is configured ➔
                 </button>
               )}
             </div>

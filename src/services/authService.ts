@@ -9,21 +9,34 @@ import {
   type User as FirebaseUser 
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
-import type { DataSourceType, AffiliationType, EnvironmentalRoleType } from '../types';
+import type { DataSourceType, AffiliationType, EnvironmentalRoleType, ParticipantType } from '../types';
 import { getEarnedBadges, type BadgeItem } from '../utils/badgeUtils';
 
 export type UserRole = 'CITIZEN' | 'VOLUNTEER' | 'ORGANIZATION' | 'ADMIN';
 
 export interface SignUpIdentityData {
   city?: string;
-  affiliationType?: AffiliationType;
+  state?: string;
+  country?: string;
+  participantType?: ParticipantType | string;
   organizationName?: string;
+  organizationType?: string;
+  website?: string;
+  organizationDescription?: string;
+  memberCount?: string;
+  institutionName?: string;
+  nssUnitName?: string;
+  environmentalInterests?: string[];
+  participationRoles?: string[];
+  publicProfile?: boolean;
+  photoURL?: string;
+
+  affiliationType?: AffiliationType;
   chapterName?: string;
   environmentalRole?: EnvironmentalRoleType;
   bio?: string;
   linkedinUrl?: string;
   githubUrl?: string;
-  publicProfile?: boolean;
 }
 
 export interface UserActivityItem {
@@ -42,8 +55,19 @@ export interface PublicProfileData {
   displayName: string;
   photoURL?: string;
   city?: string;
-  affiliationType?: string;
+  state?: string;
+  country?: string;
+  participantType?: string;
   organizationName?: string;
+  organizationType?: string;
+  website?: string;
+  organizationDescription?: string;
+  memberCount?: string;
+  institutionName?: string;
+  nssUnitName?: string;
+  environmentalInterests?: string[];
+  participationRoles?: string[];
+  affiliationType?: string;
   chapterName?: string;
   environmentalRole?: string;
   bio?: string;
@@ -82,9 +106,9 @@ export interface UserProfile extends SignUpIdentityData {
 
 const DEMO_USER: UserProfile = {
   uid: 'demo-user-1',
-  displayName: 'Alex Chen (Demo Citizen)',
+  displayName: 'Alex Chen (Demo Volunteer)',
   email: 'alex.chen@demo.trashchain.org',
-  organization: 'EcoAlliance Demo',
+  organization: 'BVRIT Hyderabad',
   role: 'VOLUNTEER',
   createdAt: new Date().toISOString(),
   impactScore: 742,
@@ -95,11 +119,18 @@ const DEMO_USER: UserProfile = {
   dataSource: 'DEMO DATA',
 
   city: 'Hyderabad',
-  affiliationType: 'NSS Chapter',
+  state: 'Telangana',
+  country: 'India',
+  participantType: 'NSS Volunteer',
+  institutionName: 'BVRIT Hyderabad',
+  nssUnitName: 'NSS Unit 02',
   organizationName: 'BVRIT Hyderabad',
+  affiliationType: 'NSS Chapter',
   chapterName: 'NSS Unit 02',
   environmentalRole: 'NSS Volunteer',
   bio: 'Passionate about recovering urban waterbodies and plastic waste reduction.',
+  environmentalInterests: ['Waste Cleanup', 'Plastic Reduction', 'Water Body Cleanup', 'Monitoring & Verification'],
+  participationRoles: ['Report Waste Hotspots', 'Join Cleanup Missions', 'Monitor Cleaned Locations'],
   linkedinUrl: 'https://linkedin.com',
   githubUrl: 'https://github.com',
   publicProfile: false,
@@ -226,7 +257,7 @@ class AuthService {
           displayName: data.displayName || 'Volunteer',
           email: data.email || fallbackEmail,
           photoURL: data.photoURL || googlePhotoURL || undefined,
-          organization: data.organization || '',
+          organization: data.organization || data.organizationName || '',
           role: (data.role as UserRole) || 'CITIZEN',
           createdAt: data.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
           impactScore: data.impactScore || 0,
@@ -234,8 +265,20 @@ class AuthService {
           dataSource: 'FIELD DATA',
 
           city: data.city || '',
-          affiliationType: data.affiliationType || 'Independent',
+          state: data.state || '',
+          country: data.country || 'India',
+          participantType: data.participantType || data.affiliationType || 'Individual Citizen',
           organizationName: data.organizationName || data.organization || '',
+          organizationType: data.organizationType || '',
+          website: data.website || '',
+          organizationDescription: data.organizationDescription || '',
+          memberCount: data.memberCount || '',
+          institutionName: data.institutionName || '',
+          nssUnitName: data.nssUnitName || '',
+          environmentalInterests: data.environmentalInterests || [],
+          participationRoles: data.participationRoles || [],
+
+          affiliationType: data.affiliationType || 'Independent',
           chapterName: data.chapterName || '',
           environmentalRole: data.environmentalRole || 'Citizen',
           bio: data.bio || '',
@@ -263,27 +306,41 @@ class AuthService {
 
   private formatAuthError(err: any): Error {
     const code = err?.code || '';
+    const message = err?.message || '';
+    const currentHostname = typeof window !== 'undefined' ? window.location.hostname : 'current domain';
+
+    console.error('[AuthService] Firebase Auth Error:', { code, message, rawError: err });
+
     switch (code) {
       case 'auth/email-already-in-use':
-        return new Error('This email address is already in use by another account. If you registered previously with Google, please click "Continue with Google".');
+        return new Error('This email address is already registered. If you previously registered with Google, please use Continue with Google.');
       case 'auth/invalid-email':
-        return new Error('The email address format is invalid.');
+        return new Error('Please enter a valid email address.');
       case 'auth/weak-password':
-        return new Error('Password should be at least 6 characters long.');
+        return new Error('Your password is too weak. Please choose a stronger password.');
       case 'auth/wrong-password':
       case 'auth/user-not-found':
       case 'auth/invalid-credential':
-        return new Error('Invalid email or password. Please check your credentials.');
+        return new Error('Invalid email or password. Please check your credentials and try again.');
+      case 'auth/user-disabled':
+        return new Error('This user account has been disabled. Please contact support.');
       case 'auth/popup-closed-by-user':
         return new Error('Google Sign-In popup was closed before completing authentication.');
       case 'auth/popup-blocked':
-        return new Error('Google Sign-In popup was blocked by your browser. Please allow popups and try again.');
+        return new Error('Google Sign-In popup was blocked by your browser. Please allow popups for this site and try again.');
       case 'auth/account-exists-with-different-credential':
         return new Error('An account already exists with this email address under a different login provider.');
       case 'auth/unauthorized-domain':
-        return new Error('Authentication is currently unavailable on this domain. Please try Demo Mode or use an authorized environment.');
+        return new Error(`Authentication domain "${currentHostname}" is not authorized. Please add "${currentHostname}" to Firebase Console ➔ Authentication ➔ Settings ➔ Authorized domains.`);
+      case 'auth/operation-not-allowed':
+        return new Error('Email/password sign-up is currently disabled. Please enable Email/Password authentication in Firebase Console.');
+      case 'auth/api-key-not-valid':
+      case 'auth/invalid-api-key':
+        return new Error('Invalid Firebase API key. Please check your environment variables configuration.');
+      case 'auth/network-request-failed':
+        return new Error('Network error. Please check your connection and try again.');
       default:
-        return new Error(err?.message || 'An authentication error occurred. Please try again.');
+        return new Error(message || 'An authentication error occurred. Please try again.');
     }
   }
 
@@ -310,13 +367,14 @@ class AuthService {
   }
 
   public async login(email: string, pass: string): Promise<UserProfile> {
+    const cleanEmail = email.trim().toLowerCase();
     if (isDemoMode() || !auth) {
       console.info('[AuthService] Demo Mode login simulation');
       return this.loginDemoUser();
     }
     try {
-      const cred = await signInWithEmailAndPassword(auth, email, pass);
-      const profile = await this.fetchUserProfile(cred.user.uid, cred.user.email || email);
+      const cred = await signInWithEmailAndPassword(auth, cleanEmail, pass);
+      const profile = await this.fetchUserProfile(cred.user.uid, cred.user.email || cleanEmail);
       this.currentUser = profile;
       this.notifyListeners();
       return profile;
@@ -334,25 +392,40 @@ class AuthService {
     org?: string,
     identityData?: SignUpIdentityData
   ): Promise<UserProfile> {
-    if (isDemoMode() || !auth || !db) {
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanName = displayName.trim();
+    if (isDemoMode() || !auth) {
       console.info('[AuthService] Demo Mode signup simulation');
       return this.loginDemoUser();
     }
     try {
-      const cred = await createUserWithEmailAndPassword(auth, email, pass);
+      const cred = await createUserWithEmailAndPassword(auth, cleanEmail, pass);
       const newProfile: UserProfile = {
         uid: cred.user.uid,
-        displayName,
-        email,
-        organization: org || identityData?.organizationName || '',
+        displayName: cleanName,
+        email: cleanEmail,
+        photoURL: identityData?.bio /* avatar URL passed if any */ || undefined,
+        organization: org || identityData?.organizationName || identityData?.institutionName || '',
         role,
         createdAt: new Date().toISOString(),
         impactScore: 50,
         missionsCompleted: 0,
         dataSource: 'FIELD DATA',
         city: identityData?.city || '',
-        affiliationType: identityData?.affiliationType || 'Independent',
+        state: identityData?.state || '',
+        country: identityData?.country || 'India',
+        participantType: identityData?.participantType || 'Individual Citizen',
         organizationName: identityData?.organizationName || org || '',
+        organizationType: identityData?.organizationType || '',
+        website: identityData?.website || '',
+        organizationDescription: identityData?.organizationDescription || '',
+        memberCount: identityData?.memberCount || '',
+        institutionName: identityData?.institutionName || '',
+        nssUnitName: identityData?.nssUnitName || '',
+        environmentalInterests: identityData?.environmentalInterests || [],
+        participationRoles: identityData?.participationRoles || [],
+
+        affiliationType: identityData?.affiliationType || 'Independent',
         chapterName: identityData?.chapterName || '',
         environmentalRole: identityData?.environmentalRole || 'Citizen',
         bio: identityData?.bio || '',
@@ -360,25 +433,63 @@ class AuthService {
         githubUrl: identityData?.githubUrl || '',
         publicProfile: identityData?.publicProfile ?? false,
       };
-      await setDoc(doc(db, 'users', cred.user.uid), {
-        displayName,
-        email,
-        organization: org || identityData?.organizationName || '',
-        role,
-        createdAt: serverTimestamp(),
-        impactScore: 50,
-        missionsCompleted: 0,
-        dataSource: 'FIELD DATA',
-        city: newProfile.city,
-        affiliationType: newProfile.affiliationType,
-        organizationName: newProfile.organizationName,
-        chapterName: newProfile.chapterName,
-        environmentalRole: newProfile.environmentalRole,
-        bio: newProfile.bio,
-        linkedinUrl: newProfile.linkedinUrl,
-        githubUrl: newProfile.githubUrl,
-        publicProfile: newProfile.publicProfile,
-      });
+
+      if (db) {
+        try {
+          await setDoc(doc(db, 'users', cred.user.uid), {
+            displayName: cleanName,
+            email: cleanEmail,
+            organization: newProfile.organization,
+            role,
+            createdAt: serverTimestamp(),
+            impactScore: 50,
+            missionsCompleted: 0,
+            dataSource: 'FIELD DATA',
+            city: newProfile.city,
+            state: newProfile.state,
+            country: newProfile.country,
+            participantType: newProfile.participantType,
+            organizationName: newProfile.organizationName,
+            organizationType: newProfile.organizationType,
+            website: newProfile.website,
+            organizationDescription: newProfile.organizationDescription,
+            memberCount: newProfile.memberCount,
+            institutionName: newProfile.institutionName,
+            nssUnitName: newProfile.nssUnitName,
+            environmentalInterests: newProfile.environmentalInterests,
+            participationRoles: newProfile.participationRoles,
+            affiliationType: newProfile.affiliationType,
+            chapterName: newProfile.chapterName,
+            environmentalRole: newProfile.environmentalRole,
+            bio: newProfile.bio,
+            linkedinUrl: newProfile.linkedinUrl,
+            githubUrl: newProfile.githubUrl,
+            publicProfile: newProfile.publicProfile,
+          });
+
+          if (newProfile.publicProfile) {
+            const publicDocRef = doc(db, 'profiles', cred.user.uid, 'public', 'data');
+            await setDoc(publicDocRef, {
+              uid: cred.user.uid,
+              displayName: cleanName,
+              photoURL: newProfile.photoURL || null,
+              city: newProfile.city,
+              state: newProfile.state,
+              country: newProfile.country,
+              participantType: newProfile.participantType,
+              organizationName: newProfile.organizationName,
+              institutionName: newProfile.institutionName,
+              nssUnitName: newProfile.nssUnitName,
+              environmentalInterests: newProfile.environmentalInterests,
+              participationRoles: newProfile.participationRoles,
+              publicProfile: true,
+              updatedAt: serverTimestamp(),
+            }, { merge: true });
+          }
+        } catch (dbErr) {
+          console.warn('[AuthService] Firestore setDoc error on signup:', dbErr);
+        }
+      }
       this.currentUser = newProfile;
       this.notifyListeners();
       return newProfile;
@@ -388,8 +499,12 @@ class AuthService {
     }
   }
 
-  public async loginWithGoogle(selectedRole: UserRole = 'CITIZEN', org?: string): Promise<UserProfile> {
-    if (isDemoMode() || !auth || !db) {
+  public async loginWithGoogle(
+    selectedRole: UserRole = 'CITIZEN',
+    org?: string,
+    identityData?: SignUpIdentityData
+  ): Promise<UserProfile> {
+    if (isDemoMode() || !auth) {
       console.info('[AuthService] Demo Mode Google Sign-In simulation');
       return this.loginDemoUser();
     }
@@ -399,42 +514,123 @@ class AuthService {
       const cred = await signInWithPopup(auth, provider);
       const fbUser = cred.user;
 
-      const userDocRef = doc(db, 'users', fbUser.uid);
-      const userSnap = await getDoc(userDocRef);
+      if (db) {
+        try {
+          const userDocRef = doc(db, 'users', fbUser.uid);
+          const userSnap = await getDoc(userDocRef);
 
-      if (userSnap.exists()) {
-        const profile = await this.fetchUserProfile(fbUser.uid, fbUser.email || '');
-        this.currentUser = profile;
-        this.notifyListeners();
-        return profile;
-      } else {
-        const newProfile: UserProfile = {
-          uid: fbUser.uid,
-          displayName: fbUser.displayName || fbUser.email?.split('@')[0] || 'Google Volunteer',
-          email: fbUser.email || '',
-          photoURL: fbUser.photoURL || undefined,
-          organization: org || '',
-          role: selectedRole,
-          createdAt: new Date().toISOString(),
-          impactScore: 50,
-          missionsCompleted: 0,
-          dataSource: 'FIELD DATA',
-        };
-        await setDoc(userDocRef, {
-          displayName: newProfile.displayName,
-          email: newProfile.email,
-          photoURL: newProfile.photoURL || null,
-          organization: newProfile.organization,
-          role: newProfile.role,
-          createdAt: serverTimestamp(),
-          impactScore: 50,
-          missionsCompleted: 0,
-          dataSource: 'FIELD DATA',
-        });
-        this.currentUser = newProfile;
-        this.notifyListeners();
-        return newProfile;
+          if (userSnap.exists()) {
+            const profile = await this.fetchUserProfile(fbUser.uid, fbUser.email || '', fbUser.photoURL);
+            if (identityData && Object.keys(identityData).length > 0) {
+              await this.updateUserProfile(identityData);
+              return this.currentUser || profile;
+            }
+            this.currentUser = profile;
+            this.notifyListeners();
+            return profile;
+          } else {
+            const newProfile: UserProfile = {
+              uid: fbUser.uid,
+              displayName: fbUser.displayName || fbUser.email?.split('@')[0] || 'Google Volunteer',
+              email: fbUser.email || '',
+              photoURL: fbUser.photoURL || undefined,
+              organization: org || identityData?.organizationName || identityData?.institutionName || '',
+              role: selectedRole,
+              createdAt: new Date().toISOString(),
+              impactScore: 50,
+              missionsCompleted: 0,
+              dataSource: 'FIELD DATA',
+              city: identityData?.city || '',
+              state: identityData?.state || '',
+              country: identityData?.country || 'India',
+              participantType: identityData?.participantType || 'Individual Citizen',
+              organizationName: identityData?.organizationName || org || '',
+              organizationType: identityData?.organizationType || '',
+              website: identityData?.website || '',
+              organizationDescription: identityData?.organizationDescription || '',
+              memberCount: identityData?.memberCount || '',
+              institutionName: identityData?.institutionName || '',
+              nssUnitName: identityData?.nssUnitName || '',
+              environmentalInterests: identityData?.environmentalInterests || [],
+              participationRoles: identityData?.participationRoles || [],
+              publicProfile: identityData?.publicProfile ?? false,
+            };
+            await setDoc(userDocRef, {
+              displayName: newProfile.displayName,
+              email: newProfile.email,
+              photoURL: newProfile.photoURL || null,
+              organization: newProfile.organization,
+              role: newProfile.role,
+              createdAt: serverTimestamp(),
+              impactScore: 50,
+              missionsCompleted: 0,
+              dataSource: 'FIELD DATA',
+              city: newProfile.city,
+              state: newProfile.state,
+              country: newProfile.country,
+              participantType: newProfile.participantType,
+              organizationName: newProfile.organizationName,
+              organizationType: newProfile.organizationType,
+              website: newProfile.website,
+              organizationDescription: newProfile.organizationDescription,
+              memberCount: newProfile.memberCount,
+              institutionName: newProfile.institutionName,
+              nssUnitName: newProfile.nssUnitName,
+              environmentalInterests: newProfile.environmentalInterests,
+              participationRoles: newProfile.participationRoles,
+              publicProfile: newProfile.publicProfile,
+            });
+
+            if (newProfile.publicProfile) {
+              const publicDocRef = doc(db, 'profiles', fbUser.uid, 'public', 'data');
+              await setDoc(publicDocRef, {
+                uid: fbUser.uid,
+                displayName: newProfile.displayName,
+                photoURL: newProfile.photoURL || null,
+                city: newProfile.city,
+                state: newProfile.state,
+                country: newProfile.country,
+                participantType: newProfile.participantType,
+                organizationName: newProfile.organizationName,
+                institutionName: newProfile.institutionName,
+                nssUnitName: newProfile.nssUnitName,
+                environmentalInterests: newProfile.environmentalInterests,
+                participationRoles: newProfile.participationRoles,
+                publicProfile: true,
+                updatedAt: serverTimestamp(),
+              }, { merge: true });
+            }
+
+            this.currentUser = newProfile;
+            this.notifyListeners();
+            return newProfile;
+          }
+        } catch (dbErr) {
+          console.warn('[AuthService] Firestore user doc read/write error on Google login:', dbErr);
+        }
       }
+
+      const fallbackProfile: UserProfile = {
+        uid: fbUser.uid,
+        displayName: fbUser.displayName || fbUser.email?.split('@')[0] || 'Google Volunteer',
+        email: fbUser.email || '',
+        photoURL: fbUser.photoURL || undefined,
+        role: selectedRole,
+        createdAt: new Date().toISOString(),
+        impactScore: 50,
+        missionsCompleted: 0,
+        dataSource: 'FIELD DATA',
+        city: identityData?.city || '',
+        state: identityData?.state || '',
+        country: identityData?.country || 'India',
+        participantType: identityData?.participantType || 'Individual Citizen',
+        environmentalInterests: identityData?.environmentalInterests || [],
+        participationRoles: identityData?.participationRoles || [],
+        publicProfile: identityData?.publicProfile ?? false,
+      };
+      this.currentUser = fallbackProfile;
+      this.notifyListeners();
+      return fallbackProfile;
     } catch (err: any) {
       console.error('[AuthService] Google Sign-In error:', err);
       throw this.formatAuthError(err);
@@ -474,18 +670,21 @@ class AuthService {
         updatedAt: serverTimestamp(),
       });
 
-      if (updates.publicProfile !== undefined || updates.displayName || 'photoURL' in updates) {
+      if (updates.publicProfile !== undefined || updates.displayName || 'photoURL' in updates || updates.participantType || updates.city) {
         const publicDocRef = doc(db, 'profiles', updatedUser.uid, 'public', 'data');
         await setDoc(publicDocRef, {
           uid: updatedUser.uid,
           displayName: updatedUser.displayName,
           photoURL: updatedUser.photoURL || null,
           city: updatedUser.city || '',
-          affiliationType: updatedUser.affiliationType || '',
+          state: updatedUser.state || '',
+          country: updatedUser.country || '',
+          participantType: updatedUser.participantType || '',
           organizationName: updatedUser.organizationName || updatedUser.organization || '',
-          chapterName: updatedUser.chapterName || '',
-          environmentalRole: updatedUser.environmentalRole || '',
-          bio: updatedUser.bio || '',
+          institutionName: updatedUser.institutionName || '',
+          nssUnitName: updatedUser.nssUnitName || '',
+          environmentalInterests: updatedUser.environmentalInterests || [],
+          participationRoles: updatedUser.participationRoles || [],
           publicProfile: updatedUser.publicProfile ?? false,
           updatedAt: serverTimestamp(),
         }, { merge: true });
@@ -536,8 +735,19 @@ class AuthService {
         displayName: this.currentUser.displayName,
         photoURL: this.currentUser.photoURL,
         city: this.currentUser.city,
-        affiliationType: this.currentUser.affiliationType,
+        state: this.currentUser.state,
+        country: this.currentUser.country,
+        participantType: this.currentUser.participantType || 'Individual Citizen',
         organizationName: this.currentUser.organizationName || this.currentUser.organization,
+        organizationType: this.currentUser.organizationType,
+        website: this.currentUser.website,
+        organizationDescription: this.currentUser.organizationDescription,
+        memberCount: this.currentUser.memberCount,
+        institutionName: this.currentUser.institutionName,
+        nssUnitName: this.currentUser.nssUnitName,
+        environmentalInterests: this.currentUser.environmentalInterests,
+        participationRoles: this.currentUser.participationRoles,
+        affiliationType: this.currentUser.affiliationType,
         chapterName: this.currentUser.chapterName,
         environmentalRole: this.currentUser.environmentalRole,
         bio: this.currentUser.bio,
@@ -586,11 +796,16 @@ class AuthService {
           displayName: name,
           photoURL: isUser2 ? 'https://i.pravatar.cc/150?u=sarah' : isUser3 ? 'https://i.pravatar.cc/150?u=david' : undefined,
           city: 'Hyderabad',
+          state: 'Telangana',
+          country: 'India',
+          participantType: isUser2 ? 'NSS Volunteer' : isUser3 ? 'Individual Citizen' : 'NGO',
+          institutionName: isUser2 ? 'BVRIT Hyderabad' : undefined,
+          organizationName: isUser2 ? 'BVRIT Hyderabad' : isUser3 ? undefined : 'EcoAlliance NGO',
           affiliationType: 'NSS Chapter',
-          organizationName: 'EcoAlliance',
-          chapterName: 'Unit 01',
           environmentalRole: 'Community Leader',
           bio: 'Active environmental worker focusing on waste collection and recycling.',
+          environmentalInterests: ['Waste Cleanup', 'Recycling', 'Plastic Reduction', 'Water Body Cleanup'],
+          participationRoles: ['Report Waste Hotspots', 'Join Cleanup Missions', 'Monitor Cleaned Locations'],
           publicProfile: true,
           verifiedRecoveries: demoStats.locationsRecovered,
           measuredWasteKg: demoStats.wasteRemovedKg,
@@ -672,8 +887,15 @@ class AuthService {
           displayName: data.displayName || 'Volunteer',
           photoURL: data.photoURL || undefined,
           city: data.city || '',
-          affiliationType: data.affiliationType || 'Independent',
+          state: data.state || '',
+          country: data.country || '',
+          participantType: data.participantType || data.affiliationType || 'Individual Citizen',
           organizationName: data.organizationName || data.organization || '',
+          institutionName: data.institutionName || '',
+          nssUnitName: data.nssUnitName || '',
+          environmentalInterests: data.environmentalInterests || [],
+          participationRoles: data.participationRoles || [],
+          affiliationType: data.affiliationType || 'Independent',
           chapterName: data.chapterName || '',
           environmentalRole: data.environmentalRole || 'Citizen',
           bio: data.bio || '',

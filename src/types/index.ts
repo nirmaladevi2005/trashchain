@@ -2,6 +2,18 @@ export type HotspotStatus = 'reported' | 'active' | 'verified' | 'mission_active
 export type Severity = 'low' | 'medium' | 'high' | 'critical';
 export type WasteCategory = 'plastic' | 'electronic' | 'organic' | 'industrial' | 'mixed' | 'chemical';
 
+export type ParticipantType =
+  | 'Individual Citizen'
+  | 'NSS Volunteer'
+  | 'NGO'
+  | 'Community Group'
+  | 'School / College'
+  | 'Resident Welfare Association (RWA)'
+  | 'Municipal / Local Government'
+  | 'Environmental Organization'
+  | 'Corporate / CSR Team'
+  | 'Other Organization';
+
 export type AffiliationType = 
   | 'Independent'
   | 'NSS Chapter'
@@ -35,6 +47,20 @@ export interface User {
   rank: string;
   joinDate: string;
   dataSource?: DataSourceType;
+  city?: string;
+  state?: string;
+  country?: string;
+  participantType?: ParticipantType | string;
+  organizationName?: string;
+  organizationType?: string;
+  website?: string;
+  organizationDescription?: string;
+  memberCount?: string;
+  institutionName?: string;
+  nssUnitName?: string;
+  environmentalInterests?: string[];
+  participationRoles?: string[];
+  publicProfile?: boolean;
 }
 
 export interface Hotspot {

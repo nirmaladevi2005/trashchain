@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Sun, Moon, Shield, Eye, Lock, User, Mail, Award, Check, AlertTriangle } from 'lucide-react';
+import { X, Sun, Moon, Shield, Eye, Lock, Check, AlertTriangle, Building2 } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { Button } from '../ui/Button';
-import { Badge } from '../ui/Badge';
 import { cn } from '../../utils/cn';
 import { authService } from '../../services/authService';
 import type { UserProfile } from '../../services/authService';
+import type { ParticipantType } from '../../types';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -14,14 +14,42 @@ interface SettingsModalProps {
   user: UserProfile | null;
 }
 
+const PARTICIPANT_TYPES: { label: string; value: ParticipantType }[] = [
+  { label: 'Individual Citizen', value: 'Individual Citizen' },
+  { label: 'NSS Volunteer', value: 'NSS Volunteer' },
+  { label: 'NGO / Non-Profit', value: 'NGO' },
+  { label: 'Community Group', value: 'Community Group' },
+  { label: 'School / College', value: 'School / College' },
+  { label: 'Resident Welfare Association (RWA)', value: 'Resident Welfare Association (RWA)' },
+  { label: 'Municipal / Local Government', value: 'Municipal / Local Government' },
+  { label: 'Environmental Organization', value: 'Environmental Organization' },
+  { label: 'Corporate / CSR Team', value: 'Corporate / CSR Team' },
+  { label: 'Other Organization', value: 'Other Organization' },
+];
+
 export function SettingsModal({ isOpen, onClose, user }: SettingsModalProps) {
   const { theme, setTheme } = useTheme();
   const [isPublicProfile, setIsPublicProfile] = useState<boolean>(user?.publicProfile ?? false);
+
+  const [city, setCity] = useState<string>(user?.city || '');
+  const [state, setState] = useState<string>(user?.state || '');
+  const [country, setCountry] = useState<string>(user?.country || 'India');
+  const [participantType, setParticipantType] = useState<ParticipantType>((user?.participantType as ParticipantType) || 'Individual Citizen');
+  const [organizationName, setOrganizationName] = useState<string>(user?.organizationName || user?.organization || '');
+  const [institutionName, setInstitutionName] = useState<string>(user?.institutionName || '');
+
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState<boolean>(false);
 
   useEffect(() => {
     if (user) {
       setIsPublicProfile(user.publicProfile ?? false);
+      setCity(user.city || '');
+      setState(user.state || '');
+      setCountry(user.country || 'India');
+      setParticipantType((user.participantType as ParticipantType) || 'Individual Citizen');
+      setOrganizationName(user.organizationName || user.organization || '');
+      setInstitutionName(user.institutionName || '');
     }
     setErrorMsg(null);
   }, [user, isOpen]);
@@ -41,12 +69,24 @@ export function SettingsModal({ isOpen, onClose, user }: SettingsModalProps) {
 
   const handleSaveAndDone = async () => {
     setErrorMsg(null);
+    setIsSaving(true);
     try {
-      await authService.updateUserProfile({ publicProfile: isPublicProfile });
+      await authService.updateUserProfile({
+        publicProfile: isPublicProfile,
+        city: city.trim(),
+        state: state.trim(),
+        country: country.trim() || 'India',
+        participantType,
+        organizationName: organizationName.trim(),
+        institutionName: institutionName.trim(),
+        organization: organizationName.trim() || institutionName.trim() || user?.organization || '',
+      });
       onClose();
     } catch (err: any) {
       console.error('[SettingsModal] Failed to save preferences:', err);
       setErrorMsg(err?.message || 'Failed to save preferences.');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -76,8 +116,8 @@ export function SettingsModal({ isOpen, onClose, user }: SettingsModalProps) {
                 <Shield className="w-5 h-5" />
               </div>
               <div>
-                <h2 id="settings-modal-title" className="text-xl font-bold tracking-tight">Account & Preference Settings</h2>
-                <p className="text-xs text-neutral-500 dark:text-neutral-400 font-mono">Manage your app theme and privacy profile</p>
+                <h2 id="settings-modal-title" className="text-xl font-bold tracking-tight">Account & Community Settings</h2>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 font-mono">Manage theme, organization & privacy preferences</p>
               </div>
             </div>
             <button
@@ -90,7 +130,7 @@ export function SettingsModal({ isOpen, onClose, user }: SettingsModalProps) {
           </div>
 
           {/* MODAL BODY */}
-          <div className="p-6 space-y-6 max-h-[80vh] overflow-y-auto">
+          <div className="p-6 space-y-6 max-h-[75vh] overflow-y-auto">
             
             {errorMsg && (
               <div className="p-3 bg-red-50 dark:bg-coral-950/60 border border-coral-200 dark:border-coral-500/40 rounded-xl flex items-center gap-2 text-coral-800 dark:text-coral-300 text-xs">
@@ -147,41 +187,101 @@ export function SettingsModal({ isOpen, onClose, user }: SettingsModalProps) {
               </div>
             </div>
 
-            {/* 2. READ-ONLY ACCOUNT INFORMATION */}
-            <div className="space-y-3 pt-2">
-              <label className="text-xs font-mono font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
-                Account Information (Read-Only)
+            {/* 2. COMMUNITY & ORGANIZATION EDITABLE FIELDS */}
+            <div className="space-y-3 pt-2 border-t border-neutral-100 dark:border-neutral-800">
+              <label className="text-xs font-mono font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 flex items-center gap-1.5">
+                <Building2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> Organization & Community Profile
               </label>
-              <div className="bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-4 space-y-3 text-xs font-mono">
-                <div className="flex items-center justify-between border-b border-neutral-200 dark:border-neutral-850 pb-2">
-                  <span className="text-neutral-500 flex items-center gap-1.5">
-                    <User className="w-3.5 h-3.5" /> Full Name
-                  </span>
-                  <span className="font-bold text-neutral-900 dark:text-white">{user?.displayName || 'Volunteer'}</span>
+
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-mono text-neutral-500 dark:text-neutral-400 mb-1">
+                    Participant Type
+                  </label>
+                  <select
+                    value={participantType}
+                    onChange={(e) => setParticipantType(e.target.value as ParticipantType)}
+                    className="w-full px-3 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-950 text-neutral-900 dark:text-white text-xs"
+                  >
+                    {PARTICIPANT_TYPES.map(pt => (
+                      <option key={pt.value} value={pt.value}>{pt.label}</option>
+                    ))}
+                  </select>
                 </div>
 
-                <div className="flex items-center justify-between border-b border-neutral-200 dark:border-neutral-850 pb-2">
-                  <span className="text-neutral-500 flex items-center gap-1.5">
-                    <Mail className="w-3.5 h-3.5" /> Email
-                  </span>
-                  <span className="font-bold text-neutral-900 dark:text-white">{user?.email || 'N/A'}</span>
-                </div>
+                {participantType === 'NSS Volunteer' ? (
+                  <div>
+                    <label className="block text-xs font-mono text-neutral-500 dark:text-neutral-400 mb-1">
+                      Institution / College Name
+                    </label>
+                    <input
+                      type="text"
+                      value={institutionName}
+                      onChange={(e) => setInstitutionName(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-950 text-neutral-900 dark:text-white text-xs"
+                      placeholder="e.g. BVRIT Hyderabad"
+                    />
+                  </div>
+                ) : participantType !== 'Individual Citizen' ? (
+                  <div>
+                    <label className="block text-xs font-mono text-neutral-500 dark:text-neutral-400 mb-1">
+                      Organization / Group Name
+                    </label>
+                    <input
+                      type="text"
+                      value={organizationName}
+                      onChange={(e) => setOrganizationName(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-950 text-neutral-900 dark:text-white text-xs"
+                      placeholder="e.g. EcoAlliance NGO"
+                    />
+                  </div>
+                ) : null}
 
-                <div className="flex items-center justify-between">
-                  <span className="text-neutral-500 flex items-center gap-1.5">
-                    <Award className="w-3.5 h-3.5" /> Account Role
-                  </span>
-                  <Badge variant="success" className="bg-fresh-500/10 text-fresh-600 dark:text-fresh-400 border-fresh-500/30 text-[10px]">
-                    {user?.role || 'CITIZEN'}
-                  </Badge>
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <label className="block text-xs font-mono text-neutral-500 dark:text-neutral-400 mb-1">
+                      City
+                    </label>
+                    <input
+                      type="text"
+                      value={city}
+                      onChange={(e) => setCity(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-950 text-neutral-900 dark:text-white text-xs"
+                      placeholder="Hyderabad"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-mono text-neutral-500 dark:text-neutral-400 mb-1">
+                      State
+                    </label>
+                    <input
+                      type="text"
+                      value={state}
+                      onChange={(e) => setState(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-950 text-neutral-900 dark:text-white text-xs"
+                      placeholder="Telangana"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-mono text-neutral-500 dark:text-neutral-400 mb-1">
+                      Country
+                    </label>
+                    <input
+                      type="text"
+                      value={country}
+                      onChange={(e) => setCountry(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-950 text-neutral-900 dark:text-white text-xs"
+                      placeholder="India"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
 
             {/* 3. PRIVACY CONTROL */}
-            <div className="space-y-3 pt-2">
+            <div className="space-y-3 pt-2 border-t border-neutral-100 dark:border-neutral-800">
               <label className="text-xs font-mono font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
-                Privacy & Data Visibility
+                Privacy & Leaderboard Visibility
               </label>
               <div className="bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-4 flex items-center justify-between">
                 <div className="space-y-0.5 max-w-xs">
@@ -190,8 +290,8 @@ export function SettingsModal({ isOpen, onClose, user }: SettingsModalProps) {
                     <span className="font-bold text-sm text-neutral-900 dark:text-white">Public Profile Visibility</span>
                   </div>
                   <p className="text-xs text-neutral-500 dark:text-neutral-400">
-                    {isPublicProfile 
-                      ? 'Your recovery chain impact and leaderboard badge will be visible to community members.' 
+                    {isPublicProfile
+                      ? 'Your recovery chain impact and leaderboard badge will be visible on the public community leaderboard.'
                       : 'Your activity statistics remain private to your local account.'}
                   </p>
                 </div>
@@ -221,8 +321,12 @@ export function SettingsModal({ isOpen, onClose, user }: SettingsModalProps) {
 
           {/* MODAL FOOTER */}
           <div className="p-4 bg-neutral-50 dark:bg-neutral-950 border-t border-neutral-100 dark:border-neutral-800 flex justify-end">
-            <Button onClick={handleSaveAndDone} className="bg-neutral-900 dark:bg-neutral-800 hover:bg-neutral-800 text-white font-bold text-xs px-6 py-2.5">
-              Done & Save Preferences
+            <Button
+              onClick={handleSaveAndDone}
+              disabled={isSaving}
+              className="bg-neutral-900 dark:bg-neutral-800 hover:bg-neutral-800 text-white font-bold text-xs px-6 py-2.5"
+            >
+              {isSaving ? 'Saving...' : 'Done & Save Preferences'}
             </Button>
           </div>
         </motion.div>

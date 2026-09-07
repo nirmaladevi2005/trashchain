@@ -73,10 +73,10 @@ export function useAuth() {
     }
   };
 
-  const loginWithGoogle = async (role?: UserRole, org?: string) => {
+  const loginWithGoogle = async (role?: UserRole, org?: string, identityData?: SignUpIdentityData) => {
     setLoading(true);
     try {
-      const profile = await authService.loginWithGoogle(role, org);
+      const profile = await authService.loginWithGoogle(role, org, identityData);
       setUser(profile);
       return profile;
     } finally {

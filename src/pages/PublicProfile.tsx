@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
-  ShieldCheck, MapPin, Building2, Users, Globe, ArrowLeft,
-  Lock, Loader2, ArrowRight, ExternalLink, AlertTriangle, Check
+  ShieldCheck, MapPin, Building2, Users, ArrowLeft,
+  Lock, Loader2, ArrowRight, ExternalLink, AlertTriangle, Check, Sparkles, Briefcase
 } from 'lucide-react';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
@@ -208,8 +208,8 @@ export default function PublicProfile() {
         <Card className="bg-white dark:bg-neutral-900 border-neutral-200 dark:border-neutral-800 text-neutral-900 dark:text-white p-6 rounded-3xl space-y-4 shadow-sm">
           <div className="flex items-center justify-between border-b border-neutral-100 dark:border-neutral-800 pb-3">
             <div>
-              <h3 className="text-lg font-bold text-neutral-900 dark:text-white">Community & Affiliation</h3>
-              <p className="text-xs text-neutral-500 dark:text-neutral-400 font-sans">Institutional backing and field identity details.</p>
+              <h3 className="text-lg font-bold text-neutral-900 dark:text-white">Community & Affiliation Profile</h3>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400 font-sans">Verified community entity type, location, and environmental focus.</p>
             </div>
             <Badge variant="success" className="bg-fresh-500/10 text-fresh-700 dark:text-fresh-400 border-fresh-500/30 font-mono text-[10px]">
               COMMUNITY IDENTIFIED
@@ -219,25 +219,66 @@ export default function PublicProfile() {
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 font-mono text-xs">
             <div className="p-4 rounded-2xl bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-850 space-y-1">
               <span className="text-neutral-500 flex items-center gap-1.5 text-[10px]">
-                <Users className="w-3.5 h-3.5 text-forest-600 dark:text-fresh-400" /> Affiliation Type
+                <Users className="w-3.5 h-3.5 text-forest-600 dark:text-fresh-400" /> Participant Category
               </span>
-              <span className="font-bold text-sm text-neutral-900 dark:text-white block">{profile.affiliationType || 'Independent'}</span>
+              <span className="font-bold text-sm text-neutral-900 dark:text-white block">
+                {profile.participantType || profile.affiliationType || 'Individual Citizen'}
+              </span>
             </div>
 
             <div className="p-4 rounded-2xl bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-850 space-y-1">
               <span className="text-neutral-500 flex items-center gap-1.5 text-[10px]">
-                <Building2 className="w-3.5 h-3.5 text-forest-600 dark:text-fresh-400" /> Organization / Institution
+                <Building2 className="w-3.5 h-3.5 text-forest-600 dark:text-fresh-400" /> Institution / Organization
               </span>
-              <span className="font-bold text-sm text-neutral-900 dark:text-white block">{profile.organizationName || 'N/A'}</span>
+              <span className="font-bold text-sm text-neutral-900 dark:text-white block">
+                {profile.institutionName || profile.organizationName || 'Independent'}
+              </span>
             </div>
 
             <div className="p-4 rounded-2xl bg-neutral-50 dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-850 space-y-1">
               <span className="text-neutral-500 flex items-center gap-1.5 text-[10px]">
-                <Globe className="w-3.5 h-3.5 text-forest-600 dark:text-fresh-400" /> Chapter / Unit
+                <MapPin className="w-3.5 h-3.5 text-forest-600 dark:text-fresh-400" /> Location
               </span>
-              <span className="font-bold text-sm text-neutral-900 dark:text-white block">{profile.chapterName || 'General Member'}</span>
+              <span className="font-bold text-sm text-neutral-900 dark:text-white block">
+                {profile.city ? `${profile.city}${profile.state ? `, ${profile.state}` : ''}${profile.country && profile.country !== 'India' ? `, ${profile.country}` : ''}` : 'Location Not Public'}
+              </span>
             </div>
           </div>
+
+          {/* Environmental Interests & Participation Roles */}
+          {((profile.environmentalInterests && profile.environmentalInterests.length > 0) || (profile.participationRoles && profile.participationRoles.length > 0)) && (
+            <div className="pt-2 border-t border-neutral-100 dark:border-neutral-800 grid grid-cols-1 md:grid-cols-2 gap-4 font-mono text-xs">
+              {profile.environmentalInterests && profile.environmentalInterests.length > 0 && (
+                <div className="space-y-1.5">
+                  <span className="text-neutral-500 text-[10px] uppercase font-bold flex items-center gap-1">
+                    <Sparkles className="w-3 h-3 text-fresh-400" /> Environmental Focus
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {profile.environmentalInterests.map((interest, idx) => (
+                      <span key={idx} className="px-2.5 py-1 rounded-lg bg-forest-500/10 text-forest-700 dark:text-fresh-400 border border-forest-500/20 font-bold text-[11px]">
+                        {interest}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {profile.participationRoles && profile.participationRoles.length > 0 && (
+                <div className="space-y-1.5">
+                  <span className="text-neutral-500 text-[10px] uppercase font-bold flex items-center gap-1">
+                    <Briefcase className="w-3 h-3 text-forest-600 dark:text-fresh-400" /> Community Roles
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {profile.participationRoles.map((role, idx) => (
+                      <span key={idx} className="px-2.5 py-1 rounded-lg bg-neutral-100 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200 border border-neutral-300 dark:border-neutral-700 font-bold text-[11px]">
+                        {role}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </Card>
 
         {/* 4.5 PUBLIC USER ACTIVITY HISTORY */}
